@@ -98,7 +98,7 @@ function Landing() {
       <section className="mx-auto -mt-5 max-w-6xl overflow-hidden px-4 pb-16 sm:-mt-8 sm:px-6 sm:pb-20">
         <div className="grid gap-1 sm:flex sm:flex-wrap sm:items-end sm:justify-between sm:gap-2">
           <p className="text-xs uppercase tracking-[0.2em] text-gold">{t("worldGold")}</p>
-          <p className="num text-xs text-muted-foreground">{t("basedOn")} {settings.source === "live" ? t("live") : t("your")} · {(settings.priceBasis ?? "retail") === "retail" ? t("shopPrice") : t("rawSpot")}</p>
+          <p className="num text-xs text-muted-foreground">{t("basedOn")} {settings.source === "live" ? t("live") : settings.source === "market" ? t("closeWord") : t("your")} · {(settings.priceBasis ?? "retail") === "retail" ? t("shopPrice") : t("rawSpot")}</p>
         </div>
         <GoldMap />
       </section>

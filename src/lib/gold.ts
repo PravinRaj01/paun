@@ -54,7 +54,7 @@ export function sellQuote(trade: Trade, spotUsdOz: number) {
 export type Settings = {
   spotUsdOz: number;
   apiKey: string;
-  source: "manual" | "live";
+  source: "manual" | "live" | "market"; // market = latest daily close from the published snapshot
   updatedAt: string;
   decimals: number;
   baseCurrency: string; // display currency
@@ -95,6 +95,10 @@ export const DEFAULT_TRADE: Trade = {
   side: "buy",
   deduction: 5,
 };
+
+/** True while the user has never set a price themselves: still the shipped default, untouched. */
+export const hasDefaultSpot = (s: Settings) =>
+  s.source === "manual" && s.updatedAt === "" && s.spotUsdOz === DEFAULT_SETTINGS.spotUsdOz;
 
 export const karatOf = (p: string) => PURITIES.find((x) => x.id === normPurity(p))!.karat;
 export const fineOf = (p: string) => PURITIES.find((x) => x.id === normPurity(p))!.fineness / 1000;

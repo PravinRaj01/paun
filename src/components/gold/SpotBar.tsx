@@ -52,7 +52,7 @@ export function SpotBar(_: { onSettings: () => void }) {
                <div className="num whitespace-nowrap text-xs text-gold sm:text-sm">{fmt(settings.spotUsdOz * base, cur, settings.decimals)}<span className="text-muted-foreground">/oz</span></div>
               <div className="num text-[11px] text-muted-foreground">
                 {fmt((settings.spotUsdOz / GRAMS_PER_OUNCE) * base, cur, settings.decimals)}/g ·{" "}
-                <span className={settings.source === "live" ? "text-success" : ""}>{settings.source}</span>
+                <span className={settings.source === "live" ? "text-success" : ""}>{settings.source === "market" ? t("closeWord") : settings.source}</span>
               </div>
             </div>
             <Button variant="ghost" size="icon" onClick={changeTheme} aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}>

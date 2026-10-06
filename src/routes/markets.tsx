@@ -6,6 +6,7 @@ import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAx
 import { AppShell } from "@/components/gold/AppShell";
 import { Watchlist } from "@/components/gold/Watchlist";
 import { SpotChart } from "@/components/gold/SpotChart";
+import { ForecastCard } from "@/components/gold/ForecastCard";
 import { BasisBadge } from "@/components/gold/BasisBadge";
 import { SimpleCompare } from "@/components/gold/SimpleCompare";
 import { useGold } from "@/lib/gold-store";
@@ -62,6 +63,7 @@ function Markets() {
         <div className={`grid gap-8 ${settings.mode === "pro" && showList ? "lg:grid-cols-[1fr_360px]" : ""}`}>
           <div className="min-w-0 space-y-8 sm:space-y-10">
             {ready ? <SpotChart /> : <div className="h-[430px] rounded-lg border bg-card" />}
+            {ready ? <ForecastCard /> : <div className="h-64 rounded-lg border bg-card" />}
             {settings.mode === "pro" && (
               <section className="space-y-4">
               <div className="flex flex-wrap items-end justify-between gap-3">
