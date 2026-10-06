@@ -137,7 +137,7 @@ describe("verdictOf (is the asking price fair?)", () => {
     [105.01, "pricey", "just past 5%"],
     [115, "pricey", "15% over is still pricey (inclusive)"],
     [115.01, "expensive", "just past 15%"],
-  ] as const)("asking %s against a fair cost of 100 -> %s (%s)", (asking, tone) => {
+  ] as const)("asking %s against a fair cost of 100 -> %s (%s)", (asking, tone, _why) => {
     expect(verdictOf(asking, 100)?.tone).toBe(tone);
   });
 
@@ -160,7 +160,8 @@ describe("landedPerGram, cheapestOf and mark-up rules", () => {
   it("premiumOf applies only on the retail basis and falls back to 5% when unset", () => {
     expect(premiumOf(country, "raw")).toBe(0);
     expect(premiumOf(country, "retail")).toBe(6);
-    expect(premiumOf({ ...country, premium: undefined }, "retail")).toBe(5);
+    const { premium: _unset, ...noPremium } = country;
+    expect(premiumOf(noPremium, "retail")).toBe(5);
   });
 
   it("cheapestOf picks the lowest all-in cost, and null for an empty list", () => {
