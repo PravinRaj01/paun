@@ -1,7 +1,7 @@
 name: market-snapshot
 
-# Builds market-snapshot.json daily and publishes it to the `data` branch (never `main`, so
-# Lovable's synced history stays clean). The app fetches it from raw.githubusercontent.com.
+# Builds market-snapshot.json daily and publishes it to the `data` branch (never `main`: a push to `main`
+# triggers a site rebuild, and daily bot commits would clutter the history). The app fetches it from raw.githubusercontent.com.
 on:
   schedule:
     - cron: "30 22 * * 1-5" # after the US close, Mon-Fri

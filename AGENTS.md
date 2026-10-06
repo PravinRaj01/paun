@@ -1,13 +1,6 @@
-<!-- LOVABLE:BEGIN -->
 > [!IMPORTANT]
-> This project is connected to [Lovable](https://lovable.dev). Avoid rewriting
-> published git history — force pushing, or rebasing/amending/squashing commits
-> that are already pushed — as it rewrites history on Lovable's side and the
-> user will likely lose their project history.
->
-> Commits you push to the connected branch sync back to Lovable and show up in
-> the editor, so keep the branch in a working state.
-<!-- LOVABLE:END -->
+> Every push to `main` is built and deployed automatically by Cloudflare (Worker `paun-web`), so keep `main` working.
+> Do not force-push or rewrite history on shared branches. Automated data commits go only to the separate `data` branch.
 
 - All app state is client-side (React context + LocalStorage in src/lib/gold-store.tsx); no backend, because the user requires no login/database.
 - PWA is manifest-only (public/manifest.webmanifest); no service worker, to avoid stale-cache risk with SSR.

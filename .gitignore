@@ -31,8 +31,7 @@ dist-ssr
 *.sln
 *.sw?
 
-#lovable
-.lovable
+
 # ML workspace (Python) — raw downloads and scratch only; shipped artifacts live in public/models
 ml/data/
 ml/artifacts/

@@ -2,7 +2,7 @@
 
 Last updated: 2026-10-06 · Owner: Pravin Raj
 Supersedes: `paun_upgrade_plan.md`, `paun_ml_architecture_plan.md`, the Gemini
-`gold_dual_model_pipeline-v2.py` draft, and `.lovable/plan/*` (history only).
+`gold_dual_model_pipeline-v2.py` draft, and the old Lovable plans (now in `docs/archive/lovable-plans/`, history only).
 First execution step saves this file into the repo as `PLAN.md`; that file becomes the
 single reference and the older plan docs are moved to `docs/archive/`.
 
@@ -95,7 +95,7 @@ with the ML forecasting model**. Decisions confirmed by the user (2026-10-06):
 9. **Vendor stack (fixed, no further decision needed):** Neon Postgres + Cloudflare Workers/Cron for any
    backend; **Gemini** and **Groq** for AI; **LangChain** only if a real multi-step chain/agent/RAG need
    appears. **Never** Lovable AI Gateway, Lovable Cloud or Supabase (no auth, db, edge functions or AI from
-   them). Lovable remains only the code editor / repo sync.
+   them). Lovable is no longer part of the stack at all.
 10. **Secrets never in the browser:** Gemini/Groq/Neon keys exist only as Cloudflare Worker secrets
     (`wrangler secret put`). The client calls our own Worker, never a vendor API directly.
 
@@ -130,8 +130,7 @@ with the ML forecasting model**. Decisions confirmed by the user (2026-10-06):
   vault instead of merging, no purity normalisation (pending item, extended).
 - G7 `resetAll` doesn't clear vault/theme — confirm intended.
 - G8 No test runner at all → 🟡 partly done: Vitest + 13 forecast/parity tests exist; tests for `gold.ts` money math land in roadmap item 2c.
-- G9 Stale docs: README titled "Gold Compass" / npm instructions; `.lovable` plan mentions
-  `vite-plugin-pwa`, contradicting manifest-only.
+- G9 ~~Stale docs~~ ✅ resolved in the housekeeping PR (README rewritten, Lovable text removed, old plans archived).
 - G10 Forecast UI needs a bilingual "not financial advice" disclaimer and data-date staleness badge.
 
 ---
@@ -262,7 +261,7 @@ Original sketch (kept for the later regime/ONNX step):
 
 ### Model refresh
 - Retrain monthly (Colab), commit new `public/models/regime.onnx` + meta to `main` (low frequency,
-  OK for Lovable). Snapshot job runs daily on `data` branch.
+  OK). Snapshot job runs daily on `data` branch.
 
 ---
 
@@ -332,15 +331,16 @@ Steps (all small; do before the backend phase):
    back-off (cloud runners are often rate-limited) and a freshness guard that fails the job rather than publish data older than 6 days. **To do after merging:** GitHub -> Actions ->
    `market-snapshot` -> Run workflow; confirm the `data` branch and its raw URL exist; reload the site and check the "Offline copy" badge is gone. Known risk: Yahoo may block
    GitHub's IPs; if so, the job fails visibly and the app keeps its bundled snapshot - then switch the price source for the job.
-6. **Lovable leftovers cleanup:** `lovable-error-reporting.ts` + its use in `__root.tsx` (replace with plain logging), `.lovable/` plans (archive to `docs/archive/`),
-   `.gitignore #lovable`, README "Build with Lovable", AGENTS.md history warning, comments mentioning Lovable sync.
+6. ✅ **Lovable leftovers cleanup (housekeeping PR, 2026-10-07):** removed `lovable-error-reporting.ts` and its use in `__root.tsx`, archived `.lovable/` plans to
+   `docs/archive/lovable-plans/`, dropped the `.gitignore` entry, rewrote the README, replaced the AGENTS.md preface, fixed comments. Remaining mentions are history or the
+   "never use Lovable AI Gateway/Cloud" rule.
 The `data` branch stays for the daily bot commits (keeps `main` history clean) — no longer because of Lovable.
 
 ### Sequencing
 | Order | Item | Status |
 |---|---|---|
 | 0–2 | ML scaffold, training + evaluation, snapshot Action, app integration (ML-0 … ML-6 first slice) | ✅ done |
-| 2a | Platform: leave Lovable + Cloudflare deploy + daily snapshot Action (see "Platform & deployment") | 🟡 remaining: confirm the first Cloudflare auto-deploy, confirm the first *scheduled* snapshot run, Lovable cleanup (step 6) |
+| 2a | Platform: leave Lovable + Cloudflare deploy + daily snapshot Action (see "Platform & deployment") | ✅ first Cloudflare auto-deploy confirmed (22:42 UTC, after the push to `main`); Lovable cleanup done in the housekeeping PR. 🟡 still to confirm: the first *scheduled* snapshot run |
 | **2c** *(new)* | **Safety net:** PR checks (tests + typecheck on every PR), tests for the app's money math (closes G8), Vault import fix (moved here from "Pending") | next — shipped with 2a's step 6 as one housekeeping PR |
 | 3 | 3C DCA Backtester (real 5-year history is already in the snapshot) | |
 | 4 | 3D Receipt/Hallmark Scanner — first use of `paun-api` (needs the owner's Gemini/Groq key) | |

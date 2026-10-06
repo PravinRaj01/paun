@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { snapshotSchema, type Snapshot } from "./types";
 
 /**
- * Where the daily snapshot comes from. A GitHub Action publishes it to the `data` branch (never `main`, so the
- * Lovable-synced history stays clean). If that is unreachable or malformed we fall back to the copy bundled in
+ * Where the daily snapshot comes from. A GitHub Action publishes it to the `data` branch (never `main`, so daily bot
+ * commits neither clutter the history nor trigger a site rebuild). If that is unreachable or malformed we fall back to the copy bundled in
  * /public, which is refreshed whenever the models are retrained - so the card still works offline.
  */
 export const REMOTE_URL =
