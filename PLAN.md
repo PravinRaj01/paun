@@ -267,11 +267,34 @@ Original sketch (kept for the later regime/ONNX step):
 
 ## Remaining features (from upgrade plan — details preserved)
 
-### 3C. DCA Backtester & Planner (next after ML; pure client-side)
+### 3C. DCA Backtester & Planner (roadmap item 3 — spec approved 2026-10-07; pure client-side)
 "What if I bought 1g (or 1 paun = 8g, 1 mayam ≈ 3.37g) of 916 every month for the last 1/3/5 years
 vs keeping cash in savings / Fixed Deposit?" Outputs: cumulative grams, average acquisition cost
 per gram, net profit at current spot vs savings comparison. Uses snapshot daily history (XAU/USD +
 USD/MYR) → real backtest instead of synthetic.
+
+**Spec (owner-approved 2026-10-07).**
+- **Where:** a new page `/dca` with its own icon in the side dock (not a section of Markets, which is already long on phones).
+- **Inputs:** monthly contribution as **grams** (default 1 g, the original example) or as an **amount in the base currency**; period **1 / 3 / 5 years**
+  (capped by the snapshot's history); purity (default 916); country (its shop mark-up, duty and tax apply when the price basis is "shop price");
+  **savings rate % a year, editable, default 3%** (an indicative starting guess, said so on screen), compounded monthly.
+- **Buy rule:** one purchase on the **first trading day of each month** in the window, at that day's XAU/USD close.
+  Price per gram = spot per gram x fineness, then the same shop mark-up / duty / tax factors `analyze()` uses for a purchase (making fee and melting are **not** part
+  of v1; melting never applies when buying). The savings comparison deposits **the same cash** on the same dates.
+- **Currency:** all maths in USD. Cash amounts are converted with the **historical USD/MYR** from the snapshot when the base currency is MYR; for any other
+  base currency (the snapshot has no history for it) today's rate is used and the screen says so. USD base needs no conversion. The ringgit figures use the
+  market USD/MYR (the latest value is shown on the page), which can differ from the watchlist rate used elsewhere in the app; the page says so.
+  The dock's phone icons shrank from 40 to 36 px so that eight icons still fit a 360 px screen.
+- **Valuation today:** (a) at spot, (b) the estimated sell-back after the susut deduction (`sellQuote`) when the price basis is "shop price".
+- **Outputs:** grams accumulated, total cash put in, average cost per gram, value today (both ways), profit/loss, savings balance, "gold beat savings by X" or
+  "savings beat gold by X"; a chart of cash in vs gold value vs savings balance over time; a collapsible table of the purchases.
+- **Honesty:** a backtest is not a forecast. The window includes a large gold rally, so show the disclaimer and the data range
+  ("prices from <first date> to <asOf>"). The data starts 2021-08-06, so the longest honest window is about 5 years.
+- **Build:** pure engine `src/lib/dca.ts` (`backtestDca`) with hand-computed tests first; then `src/components/gold/DcaBacktester.tsx` and `src/routes/dca.tsx`
+  (the route tree regenerates), a dock entry in `SideDock.tsx`, EN/BM copy in `src/locales/`. Reuse `useSnapshot` (`longHistory`), `analyze` / `sellQuote` /
+  `baseRateOf` / `fmt` / `premiumOf` from `src/lib/gold.ts`.
+- **Edge cases to test:** a month with no trading day in the data, a window longer than the history (clamp and say so), 0% and negative savings rate,
+  a zero or negative contribution (rejected), missing snapshot (offline copy still works).
 
 ### 3D. Receipt & Hallmark AI Scanner (Vision/OCR)
 Photo of receipt (Habib, Tomei, Poh Kong, kedai emas), bullion certificate, or hallmark (916,
@@ -342,7 +365,7 @@ The `data` branch stays for the daily bot commits (keeps `main` history clean) �
 | 0–2 | ML scaffold, training + evaluation, snapshot Action, app integration (ML-0 … ML-6 first slice) | ✅ done |
 | 2a | Platform: leave Lovable + Cloudflare deploy + daily snapshot Action (see "Platform & deployment") | ✅ first Cloudflare auto-deploy confirmed (22:42 UTC, after the push to `main`); Lovable cleanup done in the housekeeping PR. 🟡 still to confirm: the first *scheduled* snapshot run |
 | **2c** *(new)* | **Safety net:** PR checks (tests + typecheck on every PR), tests for the app's money math (closes G8), Vault import fix (moved here from "Pending") | ✅ built on branch `chore/housekeeping` (PR pending review): CI workflow, 25 money-math tests, strict Vault import (checked end-to-end in a real browser: merge keeps existing items; broken file, non-list and duplicates all report correctly) |
-| 3 | 3C DCA Backtester (real 5-year history is already in the snapshot) | |
+| 3 | 3C DCA Backtester (real 5-year history is already in the snapshot) | 🟡 built, awaiting commit and merge: engine `src/lib/dca.ts` with 23 hand-checked tests, page `/dca` (EN/BM) with a dock icon, checked in a real browser at desktop, 390 px and 360 px |
 | 4 | 3D Receipt/Hallmark Scanner — first use of `paun-api` (needs the owner's Gemini/Groq key) | |
 | 5 | 2 Notifications + 3E Street rates on `paun-api` + Neon (needs the owner's Neon account) | |
 | **6** *(moved from 2b)* | ML-B pretrained-forecaster benchmark — research only, never ships | |
