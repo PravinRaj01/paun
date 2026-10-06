@@ -1,13 +1,20 @@
 import { useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useGold } from "@/lib/gold-store";
-import { baseRateOf, BASIS_LABEL, fineOf, fmt, GRAMS_PER_OUNCE, premiumOf, PURITIES, spotSeries, type PurityId, type Range } from "@/lib/gold";
+import { baseRateOf, BASIS_LABEL, fineOf, fmt, GRAMS_PER_OUNCE, premiumOf, PURITIES, spotSeries, type PurityId } from "@/lib/gold";
+import { useSnapshot } from "@/lib/forecast/snapshot";
+import { useI18n } from "@/lib/i18n";
 
-const RANGES: Range[] = ["1D", "1W", "1M", "1Y"];
+// Real daily closes, so there is no intraday (1D) view. Sessions per range; ~252 trading days a year.
+type HistRange = "1W" | "1M" | "1Y" | "5Y";
+const RANGES: HistRange[] = ["1W", "1M", "1Y", "5Y"];
+const SESSIONS: Record<HistRange, number> = { "1W": 5, "1M": 22, "1Y": 252, "5Y": 1300 };
 
 export function SpotChart() {
   const { settings, setSettings, countries } = useGold();
-  const [range, setRange] = useState<Range>("1M");
+  const { t } = useI18n();
+  const snap = useSnapshot();
+  const [range, setRange] = useState<HistRange>("1M");
   const [unit, setUnit] = useState<"oz" | "g">("g");
   const [purity, setPurity] = useState<PurityId>("999.9");
   const [countryId, setCountryId] = useState<string>("");
@@ -17,14 +24,23 @@ export function SpotChart() {
   const country = countries.find((c) => c.id === countryId) ?? countries.find((c) => c.currency === cur) ?? countries[0];
   const prem = country ? premiumOf(country, basis) : 0;
   const k = (base / (unit === "g" ? GRAMS_PER_OUNCE : 1)) * fineOf(purity) * (1 + prem / 100);
-  const data = useMemo(() => spotSeries(settings.spotUsdOz, range).map((p) => ({ t: p.t, v: +(p.v * k).toFixed(2) })), [settings.spotUsdOz, range, k]);
+  const real = snap.status === "ready" ? snap.snapshot : null;
+  // Real daily closes from the published snapshot; the synthetic trend is only a fallback if it cannot be loaded at all.
+  const data = useMemo(() => {
+    if (real) {
+      const h = real.longHistory;
+      const rows = h.dates.flatMap((d, i) => (h.xau[i] == null ? [] : [{ t: Date.parse(`${d}T00:00:00Z`), v: h.xau[i] as number }]));
+      return rows.slice(-(SESSIONS[range] + 1)).map((p) => ({ t: p.t, v: +(p.v * k).toFixed(2) }));
+    }
+    return spotSeries(settings.spotUsdOz, range === "5Y" ? "1Y" : range).map((p) => ({ t: p.t, v: +(p.v * k).toFixed(2) }));
+  }, [real, settings.spotUsdOz, range, k]);
   const first = data[0]?.v ?? 0, last = data[data.length - 1]?.v ?? 0;
   const hi = Math.max(...data.map((d) => d.v)), lo = Math.min(...data.map((d) => d.v));
   const chg = last - first, pct = (chg / first) * 100, up = chg >= 0;
   const color = up ? "var(--success)" : "var(--destructive)";
   const tick = (t: number) => {
     const d = new Date(t);
-    return range === "1D" ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    return range === "5Y" ? d.toLocaleDateString([], { year: "numeric", month: "short" })
       : range === "1Y" ? d.toLocaleDateString([], { month: "short" }) : d.toLocaleDateString([], { day: "numeric", month: "short" });
   };
   const f = (n: number) => fmt(n, cur, settings.decimals);
@@ -90,7 +106,9 @@ export function SpotChart() {
         <div>High <span className="text-foreground">{f(hi)}</span></div>
         <div>Low <span className="text-foreground">{f(lo)}</span></div>
       </div>
-      <p className="mt-2 text-[11px] text-muted-foreground">Latest point is your current spot price; earlier points are an indicative trend, not exact history.</p>
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        {real ? `${t("historyNote")} ${real.asOf}. ${basis === "retail" ? t("historyMarkup") : ""}` : "Latest point is your current spot price; earlier points are an indicative trend, not exact history."}
+      </p>
     </section>
   );
 }

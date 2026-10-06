@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -21,12 +21,27 @@ from .constants import LABEL_K
 from .features import CLASS_NAMES, HORIZON, compute_features, expected_sigma
 from .model_config import load_config
 
-HISTORY_ROWS = 320  # >= 200 (MA200) + GARCH/EWMA warm-up, so the TS port can recompute everything
+HISTORY_ROWS = 600  # >= 200 (MA200) + enough warm-up for GARCH (persistence ~0.99) so the TS port matches Python
 LONG_ROWS = 1300  # ~5 trading years of XAU + USD/MYR for the DCA backtester and the real spot chart
 
 
-def _round(s, nd=4):
+def _round(s, nd=6):  # 6 decimals: the TS port is parity-tested against these values, so do not lose precision
     return [None if v != v else round(float(v), nd) for v in s]
+
+
+MAX_AGE_DAYS = 6  # a Friday close is ~3 days old on Monday; with a holiday ~4. Older means the data feed stalled.
+
+
+def check_fresh(as_of: date, today: date, max_age_days: int = MAX_AGE_DAYS) -> int:
+    """Refuse to publish a stale snapshot. Returns the age in days, raises if it exceeds max_age_days.
+
+    A silent stale publish is worse than a failed job: the app would show old numbers as if they were current, while a failed
+    job leaves the previous snapshot in place and shows up as a red X in GitHub Actions.
+    """
+    age = (today - as_of).days
+    if age > max_age_days:
+        raise SystemExit(f"snapshot as-of {as_of} is {age} days old (limit {max_age_days}): the market data feed looks stalled")
+    return age
 
 
 def build_snapshot(models_dir: Path, native_model: Path = Path("models/regime.cbm")) -> dict:
@@ -68,6 +83,7 @@ def build_snapshot(models_dir: Path, native_model: Path = Path("models/regime.cb
         for name, v, q in (("garch", hv, params["quantiles_garch"]), ("ewma", hv_e, params["quantiles_ewma"]))
     }
 
+    meta_accept = json.loads((models_dir / "model_meta.json").read_text())["acceptance"]
     h = raw.tail(HISTORY_ROWS)
     long = raw.tail(LONG_ROWS)
     return {
@@ -90,8 +106,10 @@ def build_snapshot(models_dir: Path, native_model: Path = Path("models/regime.cb
             "drivers": drivers,
             "features": {k: round(float(latest[k]), 6) for k in features},
             "bands_usd_oz": bands,
+            "recommended_band": meta_accept["recommended_band"],  # which band passed rule B1/B2 best
             "garch_hday_var": float(hv[-1]),
         },
+        "bandsParams": params,  # GARCH/EWMA parameters + quantiles, so this one JSON is self-contained
         "history": {  # inputs for the TS feature/band port (parity-tested against Python)
             "dates": [str(d.date()) for d in h.index],
             **{c: _round(h[c]) for c in ("xau", "dxy", "us10y", "real10y", "gvz", "oil", "usdmyr", "sp500")},
@@ -108,8 +126,10 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--models-dir", default="../public/models")
     ap.add_argument("--out", default="market-snapshot.json")
+    ap.add_argument("--max-age-days", type=int, default=MAX_AGE_DAYS, help="fail instead of publishing data older than this")
     a = ap.parse_args()
     snap = build_snapshot(Path(a.models_dir))
+    check_fresh(date.fromisoformat(snap["asOf"]), datetime.now(timezone.utc).date(), a.max_age_days)
     Path(a.out).write_text(json.dumps(snap, separators=(",", ":")))
     print(f"wrote {a.out} asOf={snap['asOf']} regime_shipped={snap['forecast']['regime_shipped']} bands={snap['forecast']['bands_usd_oz']}")
 

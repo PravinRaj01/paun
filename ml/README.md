@@ -43,9 +43,9 @@ Add `--use-cache` to reuse `artifacts/raw.csv` instead of downloading.
 
 Colab begins as an empty machine, so the notebook's first cell needs the code:
 
-1. **Push the repo to GitHub once** (`PravinRaj01/paun` is currently empty). It is public, so the notebook's
-   `git clone` works without a token. If you make it private, add a fine-grained read-only token to Colab
-   *Secrets* and clone with it.
+1. **The repo must be on GitHub** (`PravinRaj01/paun`, pushed). While it is public, the notebook's `git clone` works without a token. If you
+   make it private, add a fine-grained read-only token to Colab *Secrets* and clone with it. Push your latest `ml/` changes first, since the
+   notebook clones what is on GitHub, not your local copy.
 2. Open `ml/colab.ipynb` in Colab (File → Open notebook → GitHub tab) and **Runtime → Run all** (~8 min).
 3. **No GitHub?** Zip the `ml/` folder, upload it to Colab, unzip, `%cd ml`, and skip the clone in the first cell.
 4. Download `public/models/*`, `ml/models/regime.cbm` and `reports/` and commit them.
@@ -121,5 +121,7 @@ width. The daily snapshot adds `forecast.drivers`: the top 3 inputs behind today
 * ONNX contract: input `features` float32 `[N, n_features]` in `model_meta.json → spec.features` order → output `probabilities`
   float32 `[N, 3]` (Bearish, Sideways, Bullish). CatBoost's ZipMap output is stripped so `onnxruntime-web` can return a plain tensor.
   If `model_meta.json → shrink.w < 1` the app blends: `p = w·p_onnx + (1−w)·shrink.prior`.
-* Retrain monthly; commit `public/models/*`, `ml/models/regime.cbm`, `ml/paun_ml/model_config.json` and `ml/reports/`.
+* Retrain monthly; commit `public/models/*`, `ml/models/regime.cbm`, `ml/paun_ml/model_config.json` and `ml/reports/`, and refresh the app's
+  offline fallback: `cp artifacts/market-snapshot.json ../public/data/market-snapshot.json` (the app's parity test reads this file, so it must come
+  from the same Python run as the model files).
 * Notebook tooling (dev only): `uv pip install nbformat nbconvert ipykernel` (Colab has them).

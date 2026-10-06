@@ -12,6 +12,7 @@ NOTE   The same functions feed training AND the daily snapshot job, so the model
 from __future__ import annotations
 
 import io
+import time
 
 import pandas as pd
 import requests
@@ -29,12 +30,31 @@ FRED = {"real10y": "DFII10"}  # 10Y TIPS real yield, percent; public CSV endpoin
 FX_EXTRA = {"usdsgd": "SGD=X", "usdinr": "INR=X"}  # snapshot only (AED is pegged at 3.6725)
 
 
+def with_retries(fn, tries: int = 4, base_delay: float = 3.0, sleep=time.sleep):
+    """Call fn(); on any exception wait base_delay * 2^attempt seconds and try again (3s, 6s, 12s), then re-raise.
+
+    Why: Yahoo (via yfinance) rate-limits or blocks shared cloud IPs such as GitHub Actions runners, usually only for a moment.
+    A failed job is fine - the app keeps the previous snapshot - but a one-off hiccup should not cost a whole day.
+    """
+    for attempt in range(tries):
+        try:
+            return fn()
+        except Exception:
+            if attempt == tries - 1:
+                raise
+            sleep(base_delay * 2**attempt)
+
+
 def _yahoo_close(symbol: str, start: str) -> pd.Series:
     import yfinance as yf
 
-    df = yf.download(symbol, start=start, progress=False, auto_adjust=False)
-    if df is None or df.empty:
-        raise RuntimeError(f"Yahoo returned no data for {symbol}")
+    def download():
+        df = yf.download(symbol, start=start, progress=False, auto_adjust=False)
+        if df is None or df.empty:  # an empty frame is how a soft rate-limit shows up
+            raise RuntimeError(f"Yahoo returned no data for {symbol}")
+        return df
+
+    df = with_retries(download)
     if isinstance(df.columns, pd.MultiIndex):  # recent yfinance returns (field, ticker) columns
         df.columns = df.columns.get_level_values(0)
     s = df["Close"].astype(float)
@@ -43,8 +63,12 @@ def _yahoo_close(symbol: str, start: str) -> pd.Series:
 
 
 def _fred_series(series_id: str) -> pd.Series:
-    r = requests.get(f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}", timeout=30)
-    r.raise_for_status()
+    def get():
+        resp = requests.get(f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}", timeout=30)
+        resp.raise_for_status()
+        return resp
+
+    r = with_retries(get)
     df = pd.read_csv(io.StringIO(r.text), na_values=".")
     s = pd.Series(df.iloc[:, 1].astype(float).values, index=pd.to_datetime(df.iloc[:, 0]))
     return s.dropna().sort_index()

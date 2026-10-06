@@ -1,6 +1,8 @@
 import type React from "react";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { getSnapshot } from "./forecast/snapshot";
 import {
+  hasDefaultSpot,
   DEFAULT_COUNTRIES,
   DEFAULT_SETTINGS,
   DEFAULT_TRADE,
@@ -68,6 +70,27 @@ export function GoldProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.lang = settings.language === "ms" ? "ms" : "en";
   }, [settings.language]);
+
+  // The shipped default spot is a stale placeholder. Users who never set a price (or chose to follow the market close)
+  // get the latest published close; anyone who typed or fetched their own price is left alone.
+  useEffect(() => {
+    let alive = true;
+    getSnapshot().then(
+      ({ snapshot }) => {
+        if (!alive) return;
+        const close = snapshot.spotXauUsd;
+        setSettings((s) =>
+          (s.source === "market" || hasDefaultSpot(s)) && s.spotUsdOz !== close
+            ? { ...s, spotUsdOz: close, source: "market", updatedAt: new Date().toISOString() }
+            : s,
+        );
+      },
+      () => {}, // offline or blocked: keep whatever the user has
+    );
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const toggleTheme = () =>
     setTheme((t) => {
