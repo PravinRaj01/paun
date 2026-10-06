@@ -23,6 +23,11 @@
     "traces": { "enabled": false, "head_sampling_rate": 1, "persist": true },
   },
 
+  // Needed by `wrangler preview`, which Cloudflare runs for builds of branches other than main: it publishes a throwaway
+  // Preview of the Worker named after the git branch, so a pull request can be tried without touching the live site.
+  // The block can stay empty: assets, compatibility settings and observability above apply to previews as well.
+  "previews": {},
+
   // Custom domain, once you have one (the domain must be on this Cloudflare account):
   // "routes": [{ "pattern": "paun.example.com", "custom_domain": true }]
 }
