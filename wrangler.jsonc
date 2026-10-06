@@ -1,0 +1,22 @@
+// Cloudflare Worker config for the Paun front end (SSR + static assets).
+//
+// `bun run build` has Nitro merge this file with what only the build knows (the server entry, the static-assets
+// directory) and write the result to .output/server/wrangler.json, plus .wrangler/deploy/config.json, which makes
+// `wrangler deploy` run from the project root use that generated file. Do not set `main` or `assets` here: Nitro owns them.
+//
+// The backend is a separate Worker (workers/paun-api, later) with its own config, cron triggers and secrets.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "paun-web",
+
+  // Pinned on purpose. Left unset, Nitro uses the day you build, so the Worker's runtime behaviour would change silently
+  // over time. Bump it deliberately, after testing (https://developers.cloudflare.com/workers/configuration/compatibility-dates/).
+  "compatibility_date": "2026-10-06",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Workers Logs: server-side render errors and console output appear in the Cloudflare dashboard.
+  "observability": { "enabled": true },
+
+  // Custom domain, once you have one (the domain must be on this Cloudflare account):
+  // "routes": [{ "pattern": "paun.example.com", "custom_domain": true }]
+}
