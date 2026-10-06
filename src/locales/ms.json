@@ -131,5 +131,17 @@
   "spotFarFromClose": "Harga spot anda agak berbeza daripada penutup pasaran terkini.",
   "useMarketClose": "Guna penutup pasaran",
   "historyNote": "Penutup harian niaga hadapan emas (data sebenar), sehingga",
-  "historyMarkup": "Margin kedai yang dipaparkan ialah kadar hari ini bagi setiap hari."
+  "historyMarkup": "Margin kedai yang dipaparkan ialah kadar hari ini bagi setiap hari.",
+  "vaultImportInvalidJson": "Fail JSON tidak sah",
+  "vaultImportNotArray": "Dijangka senarai barang",
+  "vaultImportNone": "Tiada barang diimport",
+  "vaultImportOne": "1 barang diimport",
+  "vaultImportMany": "{{n}} barang diimport",
+  "vaultImportSkipped": "{{skipped}} dilangkau: {{reasons}}",
+  "vaultSkipItem": "bukan barang",
+  "vaultSkipWeight": "berat tidak sah",
+  "vaultSkipPurity": "ketulenan tidak sah",
+  "vaultSkipPaid": "jumlah dibayar tidak sah",
+  "vaultSkipDate": "tarikh tidak sah",
+  "vaultSkipDuplicate": "pendua"
 }

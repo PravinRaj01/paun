@@ -13,9 +13,10 @@ export const PURITIES = [
   { id: "417", label: "417 · 10K", fineness: 417, karat: 10.008 },
 ] as const;
 export type PurityId = (typeof PURITIES)[number]["id"];
-const LEGACY: Record<string, PurityId> = { "24K": "999.9", "22K": "916", "21K": "875", "18K": "750", "14K": "585", "10K": "417" };
+/** Old karat labels from earlier versions of the app and of exported vault files. */
+export const LEGACY_PURITY: Record<string, PurityId> = { "24K": "999.9", "22K": "916", "21K": "875", "18K": "750", "14K": "585", "10K": "417" };
 export const normPurity = (p: string): PurityId =>
-  (PURITIES.some((x) => x.id === p) ? p : LEGACY[p] ?? "916") as PurityId;
+  (PURITIES.some((x) => x.id === p) ? p : LEGACY_PURITY[p] ?? "916") as PurityId;
 export const purityLabel = (p: string) => PURITIES.find((x) => x.id === normPurity(p))!.label;
 
 export type Country = {

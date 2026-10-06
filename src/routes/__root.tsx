@@ -8,11 +8,11 @@ import {
   Scripts,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
-import { GoldProvider } from "../lib/gold-store";
+import { GoldProvider, useGold } from "../lib/gold-store";
+import { Toaster } from "../components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -39,9 +39,6 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -107,6 +104,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+/** Toasts (e.g. the Vault import result). Top of the screen so they never cover the bottom dock on phones. */
+function ThemedToaster() {
+  const { theme } = useGold();
+  return <Toaster theme={theme} position="top-center" />;
+}
+
 function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
@@ -114,7 +117,10 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <GoldProvider>{children}</GoldProvider>
+        <GoldProvider>
+          {children}
+          <ThemedToaster />
+        </GoldProvider>
         <Scripts />
       </body>
     </html>
