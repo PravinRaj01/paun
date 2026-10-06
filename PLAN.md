@@ -129,7 +129,7 @@ with the ML forecasting model**. Decisions confirmed by the user (2026-10-06):
 - G6 Vault import (`src/routes/vault.tsx:63`) silently ignores errors, **replaces** the whole
   vault instead of merging, no purity normalisation (pending item, extended).
 - G7 `resetAll` doesn't clear vault/theme — confirm intended.
-- G8 No test runner at all → 🟡 partly done: Vitest + 13 forecast/parity tests exist; tests for `gold.ts` money math land in roadmap item 2c.
+- G8 No test runner at all → ✅ done: Vitest with 54 TypeScript tests (forecast parity, money maths, Vault import) plus a CI check on every pull request (roadmap item 2c).
 - G9 ~~Stale docs~~ ✅ resolved in the housekeeping PR (README rewritten, Lovable text removed, old plans archived).
 - G10 Forecast UI needs a bilingual "not financial advice" disclaimer and data-date staleness badge.
 
@@ -341,7 +341,7 @@ The `data` branch stays for the daily bot commits (keeps `main` history clean) �
 |---|---|---|
 | 0–2 | ML scaffold, training + evaluation, snapshot Action, app integration (ML-0 … ML-6 first slice) | ✅ done |
 | 2a | Platform: leave Lovable + Cloudflare deploy + daily snapshot Action (see "Platform & deployment") | ✅ first Cloudflare auto-deploy confirmed (22:42 UTC, after the push to `main`); Lovable cleanup done in the housekeeping PR. 🟡 still to confirm: the first *scheduled* snapshot run |
-| **2c** *(new)* | **Safety net:** PR checks (tests + typecheck on every PR), tests for the app's money math (closes G8), Vault import fix (moved here from "Pending") | next — shipped with 2a's step 6 as one housekeeping PR |
+| **2c** *(new)* | **Safety net:** PR checks (tests + typecheck on every PR), tests for the app's money math (closes G8), Vault import fix (moved here from "Pending") | ✅ built on branch `chore/housekeeping` (PR pending review): CI workflow, 25 money-math tests, strict Vault import (checked end-to-end in a real browser: merge keeps existing items; broken file, non-list and duplicates all report correctly) |
 | 3 | 3C DCA Backtester (real 5-year history is already in the snapshot) | |
 | 4 | 3D Receipt/Hallmark Scanner — first use of `paun-api` (needs the owner's Gemini/Groq key) | |
 | 5 | 2 Notifications + 3E Street rates on `paun-api` + Neon (needs the owner's Neon account) | |
