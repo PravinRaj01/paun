@@ -41,6 +41,14 @@ ablation shows the useful signal is mostly **volatility**, not direction. XAI (`
 `threshold_pct` and SHAP `drivers`. **UI: bands are the product; the regime card stays hidden until a model passes A4 (and even then it is context, never a trading signal).**
 Notebook restructured into phase segments (`ml/tools/make_notebook.py` generates `ml/colab.ipynb`).
 
+**ML-6 first slice shipped (2026-10-06):** TypeScript port of features + GARCH/EWMA bands (`src/lib/forecast/`) proven against Python by a
+parity test on the snapshot itself (features to ~5e-7 = the file's own rounding, bands to the cent, GARCH variance to 1e-9); Vitest added
+(`bun run test`, 13 tests). **Forecast card** on the Markets page (plain-language P10–P90 range, EN/BM, stale + offline badges, disclaimer) —
+bands only, because rule A4 blocks regime %. Also fixed **G3** (chart now uses real daily closes; 1W/1M/1Y/5Y) and **G5** (new `"market"` spot
+source: users who never set a price follow the latest published close; others get a one-tap "use market close" when >3% apart). Snapshot gained
+`bandsParams`, `recommended_band`, 600-session history, `regime_shipped`. Not yet done: publish to the `data` branch (needs the repo pushed),
+G4 (i18n of the rest of SpotChart), ONNX hook (only if a Model A passes A4).
+
 Remaining ML work (before UI): (a) vol-scaled regime thresholds (fixed ±1.5% means very different things
 at 10% vs 30% vol); (b) calibration of probabilities; (c) feature ablations (is real-yield / GVZ
 adding anything?); (d) decide GARCH vs EWMA vs average for the published band; (e) TS port + golden
@@ -82,7 +90,7 @@ with the ML forecasting model**. Decisions confirmed by the user (2026-10-06):
    gold jargon (upah tukang, susut nilai, paun, mayam) locked from machine translation.
 7. Landing map: vertical page scroll at home view, sideways one-finger explore, full pan/pinch
    only after zoom. Theme change: View Transition API radial reveal + reduced-motion fallback.
-8. Lovable sync: never force-push / rewrite pushed history; keep `main` working. Automated data
+8. Lovable is fully decoupled (migration out in progress, see "Platform & deployment"). Keep `main` working and avoid force-pushing shared history. Automated data
    commits go to a **separate `data` branch**, never `main`.
 9. **Vendor stack (fixed, no further decision needed):** Neon Postgres + Cloudflare Workers/Cron for any
    backend; **Gemini** and **Groq** for AI; **LangChain** only if a real multi-step chain/agent/RAG need
@@ -96,10 +104,8 @@ with the ML forecasting model**. Decisions confirmed by the user (2026-10-06):
 ## Gaps found in the current project & plans
 
 **Blocking / do first**
-- G1 **Repo has no commits yet** (local `main` is empty). The GitHub remote
-  `PravinRaj01/paun` is also empty (verified 2026-10-06 via `git ls-remote`), so there is no
-  Lovable history to reconcile locally. Make a first commit when ready; push only deliberately,
-  and follow the AGENTS.md rule never to rewrite pushed history.
+- G1 ~~Repo has no commits~~ **Resolved:** the owner has since committed and pushed two commits to `origin/main` (`PravinRaj01/paun`). From here on:
+  never rewrite pushed history (AGENTS.md); keep `main` working; automated data commits go only to the separate `data` branch.
 - G2 **Local Python is 3.14** — CatBoost/PyTorch/arch wheels risky. Use Colab or a 3.12 venv.
 
 **Bugs in `gold_dual_model_pipeline-v2.py` (will be rewritten, not patched)**
@@ -197,6 +203,26 @@ with the ML forecasting model**. Decisions confirmed by the user (2026-10-06):
   CatBoost+GARCH on log-loss / pinball loss + coverage **and** a simple regime-based allocation
   Sharpe out-of-sample. Otherwise stays a research notebook.
 
+### ML-B Pretrained-forecaster benchmark (internal subproject — never ships to the app)
+**Question:** is our CatBoost + EWMA/GARCH pipeline actually better than off-the-shelf pretrained time-series models? (The
+"CatBoost beats foundation models" claim in the original notes came from the Gemini write-up and has not been verified by us.)
+- **Candidates:** Amazon Chronos / Chronos-Bolt, Google TimesFM, Salesforce Moirai, and Kronos (finance-specific K-line model). Confirm the
+  current model versions before building — this field moves fast. Run zero-shot first; fine-tuned variants only if zero-shot is competitive.
+- **Method (rolling origin, same data as our models):** at every forecast date give the model the last ~512 daily gold closes and ask for the
+  5-session-ahead quantiles. Score on the **same 5 walk-forward folds and held-out year**, with the **same metrics and the same rules**.
+  - *Bands:* P10–P90 coverage and pinball loss vs our EWMA / GARCH bands and the constant-volatility baseline.
+  - *Regimes:* convert each model's quantile forecast into the three regime probabilities (using the day's volatility-scaled threshold),
+    then log-loss vs climatology and vs CatBoost, including the block-bootstrap interval (rule A4).
+- **Caveats to state in the report:** (1) *contamination* — pretrained models may have seen gold prices up to their training cutoff, so older folds
+  flatter them; the most recent year is the cleanest test. (2) A zero-shot model sees only price history while ours also uses macro inputs; report
+  a price-history-only version of ours for a like-for-like row. (3) Many candidates on the same folds inflates the best score — read the intervals.
+- **Compute:** small models run on CPU; the local RTX 5060 (8 GB, needs a CUDA build of PyTorch) or free Colab/Kaggle GPUs for larger ones.
+  ~3,500 forecast dates in total.
+- **Where / output:** `ml/benchmarks/` (own `requirements-bench.txt`, so PyTorch never enters the main workspace) → `ml/reports/benchmarks.md`
+  with a candidate table + chart following the existing evaluate.py style. Decision rule: only consider adopting a pretrained model if it beats our
+  baseline on the held-out year **and** passes A4; otherwise we keep the current pipeline and record the evidence.
+- **When:** after the TypeScript port (ML-6), so the comparison uses our best Model A. Also the natural entry point for the ML-4 TFT challenger.
+
 ### ML-5 Daily market snapshot (CORS & keys strategy)
 - GitHub Action `.github/workflows/market-snapshot.yml`, cron daily ~22:30 UTC (after US close),
   Python 3.12, runs `ml/paun_ml/snapshot.py`, publishes to the **`data` branch** (force-free,
@@ -210,6 +236,17 @@ with the ML forecasting model**. Decisions confirmed by the user (2026-10-06):
 - Bonus reuse: real history fixes G3, keyless daily spot/FX fixes G5, and powers DCA (3C).
 
 ### ML-6 App integration (TypeScript)
+**Revised 2026-10-06 (after rule A4 blocked Model A):**
+- **Parity fixture = the Python snapshot itself.** `market-snapshot.json` already carries the raw history (600 sessions), the Python-computed
+  features and the Python bands for the same day; the Vitest parity test recomputes them in TypeScript and compares. No separate golden file to rot.
+- **The ONNX hook is deferred.** While `forecast.regime_shipped` is false there is nothing to run in the browser, so `onnxruntime-web` is not added
+  yet (saves several MB). It is built only when a Model A passes A4; the snapshot carries `regime_probs` meanwhile for cross-checking.
+- **First UI slice is bands-only:** a Forecast card on the Markets page (likely-range bar, median, as-of + staleness, disclaimer, EN/BM), then the
+  real-history `SpotChart` (G3/G4).
+- The snapshot embeds `bandsParams` and `recommended_band`, so one JSON is self-contained (no params/snapshot version skew). It is fetched from
+  the `data` branch with a bundled `public/data/market-snapshot.json` fallback.
+
+Original sketch (kept for the later regime/ONNX step):
 - `src/lib/forecast/features.ts` — TS port of `features.py`; Vitest parity test against the golden fixture.
 - `src/lib/forecast/bands.ts` — GARCH recursion + H-day variance + quantile factors →
   `{p10,p50,p90}` in USD/oz applied to live spot; EWMA fallback.
@@ -272,12 +309,38 @@ One Worker in `workers/paun-api/`, deployed with Wrangler independently of where
 - Optional low-priority AI extra: Groq writes the plain-language EN/BM explanation of the daily forecast and
   weekly wrap server-side in the snapshot/cron jobs (once per day, not per user request).
 
+### Platform & deployment (added 2026-10-06 — the project is now fully decoupled from Lovable)
+**Decision: Cloudflare Workers with static assets** (the build already targets Nitro preset `cloudflare-module`; `wrangler deploy`). Same platform as the planned
+`paun-api` Worker (cron, KV, secrets), so one login/pipeline and no cross-vendor CORS. Vercel was considered: better DX, but a second vendor, metered usage,
+and (as far as known) non-commercial-only free terms. "Cloudflare Pages" is the older product — new work targets Workers. Re-verify current pricing/limits at deploy time.
+Steps (all small; do before the backend phase):
+1. ✅ **Done 2026-10-06 — explicit Vite config** replacing `@lovable.dev/vite-tanstack-config` (TanStack Start, React, Tailwind, tsconfig paths, Nitro `cloudflare-module`, dev port); drop the package
+   and its `bunfig.toml` exclusions. Verified: typecheck/lint clean, tests pass, production build **byte-identical** to the old one (same 98 files, same sizes, same
+   `wrangler.json`), dev server screenshot unchanged. Dropped on purpose: Lovable's sandbox mode, error-logger plugins, asset proxy, dev-build `keepNames`
+   (no longer valid in Vite 8). `lightningcss` is now declared explicitly.
+2. ✅ **Done 2026-10-06 — committed `wrangler.jsonc`** (Worker name `paun-web`, `compatibility_date` pinned to the tested date instead of the build day, `nodejs_compat`,
+   Workers Logs on, custom-domain placeholder). Nitro merges it into `.output/server/wrangler.json`; `wrangler` is a dev dependency; scripts `preview:worker` and `deploy`;
+   guide in `docs/deploy.md`.
+3. ✅ **Deployed 2026-10-06 to https://paun-web.paun-gold.workers.dev** (account workers.dev subdomain `paun-gold`; first request failed with a TLS handshake error for ~1 min while Cloudflare
+   issued the new subdomain's certificate — normal, do not redeploy). Live checks: all routes 200 with the same byte sizes as local; 60 repeated server-rendered requests, all 200,
+   **no CPU-limit error pages**, median 23 ms / p95 90 ms; hashed JS/CSS cached 1 year immutable, snapshot/manifest revalidate; live page screenshot identical to local.
+   Still to confirm: the dashboard's *CPU time* metric (the authoritative number; no errors is strong evidence, not proof). Earlier local half: the built app runs in the real Workers runtime (`wrangler dev`): all routes 200, snapshot + manifest served, no log errors, page identical;
+   `wrangler deploy --dry-run` passes (66 modules, ~4.2 MB / 0.9 MB gzipped, 30 static files). **Remaining — needs the owner's Cloudflare login:** a real preview deploy to check: SSR CPU time within the free plan's per-request budget (else the ~$5 plan, or make Markets client-only); `/data/market-snapshot.json`
+   cached sensibly; raw.githubusercontent snapshot fetch works from the deployed origin.
+4. **Cloudflare Git integration** on `main` (build `bun run build`; test that Cloudflare's build env handles Bun, else npm).
+5. **Push + run the `market-snapshot.yml` Action** once (`workflow_dispatch`) so the `data` branch exists and the card stops showing "Offline copy".
+6. **Lovable leftovers cleanup:** `lovable-error-reporting.ts` + its use in `__root.tsx` (replace with plain logging), `.lovable/` plans (archive to `docs/archive/`),
+   `.gitignore #lovable`, README "Build with Lovable", AGENTS.md history warning, comments mentioning Lovable sync.
+The `data` branch stays for the daily bot commits (keeps `main` history clean) — no longer because of Lovable.
+
 ### Sequencing
 | Order | Item |
 |---|---|
 | 0 | ML-0 housekeeping (PLAN.md, `ml/` scaffold) |
 | 1 | ML-1 → ML-3 (Colab training + evaluation) |
 | 2 | ML-5 snapshot Action + ML-6 app integration (fixes G3/G4/G5/G8) |
+| 2a | **Platform: leave Lovable tooling + Cloudflare deploy + publish the snapshot Action** (see "Platform & deployment"; before anything that needs a backend) |
+| 2b | ML-B pretrained-forecaster benchmark (after ML-6; internal, does not ship) |
 | 3 | 3C DCA Backtester (reuses snapshot history) |
 | 4 | 3D Receipt/Hallmark Scanner |
 | 5 | 2 Notifications + 3E Crowdsourcing (on `paun-api` + Neon) |
