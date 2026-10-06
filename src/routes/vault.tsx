@@ -8,7 +8,19 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useGold } from "@/lib/gold-store";
 import { baseRateOf, fineOf, fmt, GRAMS_PER_OUNCE, PURITIES, sellQuote, DEFAULT_TRADE, type PurityId, type VaultItem } from "@/lib/gold";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, type CopyKey } from "@/lib/i18n";
+import { parseVaultImport, type SkipReason } from "@/lib/vault-import";
+import { toast } from "sonner";
+
+/** Plain-language names for why an imported item was skipped (shown in the result toast). */
+const SKIP_COPY: Record<SkipReason, CopyKey> = {
+  notItem: "vaultSkipItem",
+  weight: "vaultSkipWeight",
+  purity: "vaultSkipPurity",
+  paid: "vaultSkipPaid",
+  date: "vaultSkipDate",
+  duplicate: "vaultSkipDuplicate",
+};
 
 export const Route = createFileRoute("/vault")({
   head: () => ({
@@ -60,11 +72,30 @@ function VaultPage() {
     a.href = url; a.download = "paun-vault.json"; a.click();
     URL.revokeObjectURL(url);
   };
+  // Validates the file, ADDS the good items to the vault (never replaces it) and says exactly what happened.
   const importJson = async (f: File) => {
+    let text = "";
     try {
-      const data = JSON.parse(await f.text());
-      if (Array.isArray(data)) setVault(data.filter((x) => x && typeof x.weight === "number" && x.purity).map((x) => ({ ...x, id: x.id ?? crypto.randomUUID() })));
-    } catch { /* ignore bad file */ }
+      text = await f.text();
+    } catch {
+      toast.error(t("vaultImportInvalidJson"));
+      return;
+    } finally {
+      if (fileRef.current) fileRef.current.value = ""; // so picking the same file again still triggers onChange
+    }
+    const res = parseVaultImport(text, vault);
+    if (!res.ok) {
+      toast.error(t(res.error === "invalidJson" ? "vaultImportInvalidJson" : "vaultImportNotArray"));
+      return;
+    }
+    if (res.items.length) setVault((v) => [...v, ...res.items]);
+    const head =
+      res.imported === 0 ? t("vaultImportNone") : res.imported === 1 ? t("vaultImportOne") : t("vaultImportMany", { n: res.imported });
+    const reasons = (Object.entries(res.skipped) as [SkipReason, number][])
+      .map(([reason, n]) => `${t(SKIP_COPY[reason])}${n > 1 ? ` ×${n}` : ""}`)
+      .join(", ");
+    const message = res.skippedTotal ? `${head} (${t("vaultImportSkipped", { skipped: res.skippedTotal, reasons })})` : head;
+    (res.imported > 0 ? toast.success : toast.warning)(message);
   };
 
   return (

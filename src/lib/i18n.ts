@@ -27,7 +27,7 @@ export function useI18n() {
   }, [language, i18n]);
   return {
     language,
-    t: (key: CopyKey) => t(key, { lng: language }),
+    t: (key: CopyKey, vars?: Record<string, string | number>) => t(key, { lng: language, ...vars }),
     setLanguage: (next: Language) => setSettings((s) => ({ ...s, language: next })),
   };
 }

@@ -131,5 +131,17 @@
   "spotFarFromClose": "Your spot price is quite different from the latest market close.",
   "useMarketClose": "Use market close",
   "historyNote": "Daily closes of gold futures (real data), through",
-  "historyMarkup": "Shop mark-up shown is today's rate applied to every day."
+  "historyMarkup": "Shop mark-up shown is today's rate applied to every day.",
+  "vaultImportInvalidJson": "Invalid JSON file",
+  "vaultImportNotArray": "Expected a list of items",
+  "vaultImportNone": "No items imported",
+  "vaultImportOne": "Imported 1 item",
+  "vaultImportMany": "Imported {{n}} items",
+  "vaultImportSkipped": "{{skipped}} skipped: {{reasons}}",
+  "vaultSkipItem": "not an item",
+  "vaultSkipWeight": "invalid weight",
+  "vaultSkipPurity": "invalid purity",
+  "vaultSkipPaid": "invalid amount paid",
+  "vaultSkipDate": "invalid date",
+  "vaultSkipDuplicate": "duplicate"
 }
