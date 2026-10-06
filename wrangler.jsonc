@@ -15,7 +15,13 @@
   "compatibility_flags": ["nodejs_compat"],
 
   // Workers Logs: server-side render errors and console output appear in the Cloudflare dashboard.
-  "observability": { "enabled": true },
+  // Spelled out in full (the shorthand `{ "enabled": true }` means the same) so a deploy never silently changes dashboard
+  // settings. head_sampling_rate 1 = log every request; lower it (e.g. 0.1) if traffic grows and log volume matters.
+  // Traces stay off: nothing in the front end needs them yet.
+  "observability": {
+    "logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": true, "persist": true },
+    "traces": { "enabled": false, "head_sampling_rate": 1, "persist": true },
+  },
 
   // Custom domain, once you have one (the domain must be on this Cloudflare account):
   // "routes": [{ "pattern": "paun.example.com", "custom_domain": true }]
