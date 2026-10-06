@@ -305,6 +305,29 @@ as fallback. The image is never stored; extracted fields are shown for the user 
 entry is saved. Use Gemini's paid tier (free-tier inputs may be used for training) and say so in the scanner
 UI. No DB needed. Reuse `normPurity()` legacy mapping.
 
+**Spec (owner-approved 2026-10-07): Gemini first, Groq later as the fallback; Turnstile + rate limit + daily cap.**
+- **Where it lives:** a new Worker in `workers/paun-api/` (own `wrangler.jsonc`, own tests, deployed on its own; the front end is `paun-web`). First endpoints:
+  `GET /health` and `POST /scan`.
+- **`POST /scan`:** the browser resizes the photo (longest side ~1280 px, JPEG ~0.8) and sends it with a Turnstile token. The Worker (1) checks the origin against an
+  allow-list (the Worker domain and localhost), (2) verifies the Turnstile token, (3) applies the per-visitor rate limit and the **global daily cap** (a counter; when it is hit the
+  Worker answers "scanner busy, try tomorrow" **without calling the AI**), (4) calls Gemini with the image and a **structured-output schema**, (5) validates the answer with zod and
+  returns only fields it trusts. The image is never stored or logged; logs hold status codes and timings only.
+- **Extracted fields (each nullable, never guessed):** item name, purity (must be one of the app's stamps or a legacy karat label, else null), weight in grams, workmanship fee
+  (*upah*, per gram or total), purchase date (real calendar date, not in the future), total paid and its currency. The prompt tells the model to answer null rather than guess.
+- **Secrets and config:** `GEMINI_API_KEY` and `TURNSTILE_SECRET` are Worker secrets (`wrangler secret put`), never in the browser or the repo. The Turnstile *site* key is public.
+  The model name, daily cap and per-visitor limit are plain variables so they can change without code. Verify the current Gemini model name and free/paid terms when implementing.
+- **Front end:** a "Scan receipt" button on the Vault page opens a dialog: camera or photo picker (`<input type=file accept=image/* capture>`), preview, Turnstile, upload, then an
+  **editable pre-filled form**; nothing is saved until the user confirms. A pure `scanToVaultItem` mapper converts the result (paid amount converted with the watchlist rate for the
+  detected currency, or left blank for the user if the currency is unknown). Copy in EN/BM. Privacy line in the dialog: the photo is sent to Google's Gemini to be read and is not stored by Paun.
+- **Privacy / terms (owner decision at deploy time):** Gemini's free tier may use submitted content to improve Google's products; the paid tier does not. Choose before real users scan receipts.
+- **Evaluation (honest accuracy):** `workers/paun-api/eval/` runs the scanner over 3-5+ real sample photos (kept out of git) against hand-written expected JSON and prints per-field
+  accuracy. A scanner that is wrong half the time on weight or purity is not shipped as "zero manual entry".
+- **Tests:** validation and sanitising of the model's answer, rate limit and daily cap logic, CORS allow-list, Turnstile failure paths and Gemini errors (all with mocked `fetch`);
+  the pure `scanToVaultItem` mapper.
+- **Build order:** (1) Worker skeleton with `/health`, deployed; (2) `/scan` against a mocked Gemini; (3) front-end dialog; (4) real-photo evaluation; (5) Groq fallback only if needed.
+- **Needs from the owner:** a Gemini API key (Google AI Studio); a Turnstile widget (site key + secret) from the Cloudflare dashboard; 3-5 sample receipt/hallmark photos with personal
+  details covered; approval before any Cloudflare resource is created (KV namespace for the daily cap, rate-limit binding) and before deploying.
+
 ### 2. Price Alert & Push Notification System
 Threshold alerts ("Gold 916 fell below RM 390/g"), arbitrage spread triggers ("Dubai–Malaysia
 spread > 7.5% net"), weekly wrap (high/low + portfolio summary). Cloudflare Worker cron every
@@ -363,10 +386,10 @@ The `data` branch stays for the daily bot commits (keeps `main` history clean) �
 | Order | Item | Status |
 |---|---|---|
 | 0–2 | ML scaffold, training + evaluation, snapshot Action, app integration (ML-0 … ML-6 first slice) | ✅ done |
-| 2a | Platform: leave Lovable + Cloudflare deploy + daily snapshot Action (see "Platform & deployment") | ✅ first Cloudflare auto-deploy confirmed (22:42 UTC, after the push to `main`); Lovable cleanup done in the housekeeping PR. 🟡 still to confirm: the first *scheduled* snapshot run |
+| 2a | Platform: leave Lovable + Cloudflare deploy + daily snapshot Action (see "Platform & deployment") | ✅ first Cloudflare auto-deploy confirmed (22:42 UTC, after the push to `main`); Lovable cleanup done in the housekeeping PR. 🟡 the first *scheduled* snapshot run has NOT fired yet (due 2026-10-06 22:30 UTC, still absent 80+ min later; GitHub often skips a new schedule's first run). Recheck after the 2026-10-07 22:30 UTC slot; if missing again, move the minute off :30 and add a backup slot (the job commits only when data changes, so it is idempotent) |
 | **2c** *(new)* | **Safety net:** PR checks (tests + typecheck on every PR), tests for the app's money math (closes G8), Vault import fix (moved here from "Pending") | ✅ built on branch `chore/housekeeping` (PR pending review): CI workflow, 25 money-math tests, strict Vault import (checked end-to-end in a real browser: merge keeps existing items; broken file, non-list and duplicates all report correctly) |
-| 3 | 3C DCA Backtester (real 5-year history is already in the snapshot) | 🟡 built, awaiting commit and merge: engine `src/lib/dca.ts` with 23 hand-checked tests, page `/dca` (EN/BM) with a dock icon, checked in a real browser at desktop, 390 px and 360 px |
-| 4 | 3D Receipt/Hallmark Scanner — first use of `paun-api` (needs the owner's Gemini/Groq key) | |
+| 3 | 3C DCA Backtester (real 5-year history is already in the snapshot) | ✅ done 2026-10-07 (PR #3): engine `src/lib/dca.ts` with 23 hand-checked tests, page `/dca` (EN/BM) with a dock icon, checked in a real browser at desktop, 390 px and 360 px; live on the Worker |
+| 4 | 3D Receipt/Hallmark Scanner — first use of `paun-api` (needs the owner's Gemini key and a Turnstile widget) | 🟡 spec approved 2026-10-07 (see section 3D); next up |
 | 5 | 2 Notifications + 3E Street rates on `paun-api` + Neon (needs the owner's Neon account) | |
 | **6** *(moved from 2b)* | ML-B pretrained-forecaster benchmark — research only, never ships | |
 | later | ML-4 TFT challenger; parked ideas | |
