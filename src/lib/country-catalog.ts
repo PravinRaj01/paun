@@ -1,0 +1,51 @@
+/**
+ * Built-in country catalog for the watchlist picker.
+ * FX rates, duty and tax are indicative defaults — every value stays editable
+ * after a country is added. No live FX feed (fully client-side app).
+ */
+export type CatalogEntry = Omit<{ id: string; name: string; currency: string; rate: number; duty: number; tax: number }, "id">;
+
+export const COUNTRY_CATALOG: CatalogEntry[] = [
+  { name: "United States", currency: "USD", rate: 1, duty: 0, tax: 0 },
+  { name: "Malaysia", currency: "MYR", rate: 4.45, duty: 0, tax: 0 },
+  { name: "Singapore", currency: "SGD", rate: 1.35, duty: 0, tax: 0 },
+  { name: "India", currency: "INR", rate: 88, duty: 6, tax: 3 },
+  { name: "UAE (Dubai)", currency: "AED", rate: 3.67, duty: 0, tax: 5 },
+  { name: "Saudi Arabia", currency: "SAR", rate: 3.75, duty: 0, tax: 15 },
+  { name: "Qatar", currency: "QAR", rate: 3.64, duty: 0, tax: 0 },
+  { name: "Kuwait", currency: "KWD", rate: 0.31, duty: 0, tax: 0 },
+  { name: "Bahrain", currency: "BHD", rate: 0.38, duty: 0, tax: 0 },
+  { name: "Oman", currency: "OMR", rate: 0.385, duty: 0, tax: 5 },
+  { name: "Turkey", currency: "TRY", rate: 42, duty: 0, tax: 20 },
+  { name: "Indonesia", currency: "IDR", rate: 15900, duty: 0, tax: 11 },
+  { name: "Thailand", currency: "THB", rate: 34.5, duty: 0, tax: 7 },
+  { name: "Vietnam", currency: "VND", rate: 25500, duty: 0, tax: 10 },
+  { name: "Philippines", currency: "PHP", rate: 58, duty: 0, tax: 12 },
+  { name: "Pakistan", currency: "PKR", rate: 280, duty: 0, tax: 0 },
+  { name: "Bangladesh", currency: "BDT", rate: 122, duty: 5, tax: 5 },
+  { name: "Sri Lanka", currency: "LKR", rate: 300, duty: 0, tax: 18 },
+  { name: "China", currency: "CNY", rate: 7.25, duty: 0, tax: 13 },
+  { name: "Hong Kong", currency: "HKD", rate: 7.8, duty: 0, tax: 0 },
+  { name: "Japan", currency: "JPY", rate: 155, duty: 0, tax: 10 },
+  { name: "South Korea", currency: "KRW", rate: 1380, duty: 0, tax: 10 },
+  { name: "United Kingdom", currency: "GBP", rate: 0.75, duty: 0, tax: 0 },
+  { name: "Germany", currency: "EUR", rate: 0.92, duty: 0, tax: 0 },
+  { name: "France", currency: "EUR", rate: 0.92, duty: 0, tax: 0 },
+  { name: "Italy", currency: "EUR", rate: 0.92, duty: 0, tax: 0 },
+  { name: "Spain", currency: "EUR", rate: 0.92, duty: 0, tax: 0 },
+  { name: "Netherlands", currency: "EUR", rate: 0.92, duty: 0, tax: 0 },
+  { name: "Switzerland", currency: "CHF", rate: 0.8, duty: 0, tax: 8.1 },
+  { name: "Sweden", currency: "SEK", rate: 9.5, duty: 0, tax: 0 },
+  { name: "Norway", currency: "NOK", rate: 10.8, duty: 0, tax: 0 },
+  { name: "Poland", currency: "PLN", rate: 3.65, duty: 0, tax: 0 },
+  { name: "Canada", currency: "CAD", rate: 1.37, duty: 0, tax: 0 },
+  { name: "Australia", currency: "AUD", rate: 1.52, duty: 0, tax: 10 },
+  { name: "New Zealand", currency: "NZD", rate: 1.68, duty: 0, tax: 15 },
+  { name: "South Africa", currency: "ZAR", rate: 18, duty: 0, tax: 15 },
+  { name: "Kenya", currency: "KES", rate: 129, duty: 0, tax: 16 },
+  { name: "Nigeria", currency: "NGN", rate: 1550, duty: 0, tax: 7.5 },
+  { name: "Egypt", currency: "EGP", rate: 49, duty: 0, tax: 14 },
+  { name: "Brazil", currency: "BRL", rate: 5.4, duty: 0, tax: 18 },
+  { name: "Mexico", currency: "MXN", rate: 18.5, duty: 0, tax: 16 },
+  { name: "Argentina", currency: "ARS", rate: 1350, duty: 0, tax: 21 },
+];

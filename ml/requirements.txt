@@ -1,0 +1,12 @@
+# Paun ML workspace — target Python 3.12 (Colab default is fine; avoid 3.14, wheels lag)
+numpy>=1.26,<3
+pandas>=2.2,<3
+scikit-learn>=1.5
+yfinance>=0.2.50
+requests>=2.32
+arch>=7.0
+catboost>=1.2.7
+onnx>=1.16
+onnxruntime>=1.19
+matplotlib>=3.9
+pytest>=8

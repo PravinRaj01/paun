@@ -1,0 +1,45 @@
+name: market-snapshot
+
+# Builds market-snapshot.json daily and publishes it to the `data` branch (never `main`, so
+# Lovable's synced history stays clean). The app fetches it from raw.githubusercontent.com.
+on:
+  schedule:
+    - cron: "30 22 * * 1-5" # after the US close, Mon-Fri
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: market-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: ml/requirements.txt
+      - run: pip install -r ml/requirements.txt
+      - name: Build snapshot
+        working-directory: ml
+        run: python -m paun_ml.snapshot --models-dir ../public/models --out ../market-snapshot.json
+      - name: Publish to data branch
+        run: |
+          mkdir -p /tmp/out && cp market-snapshot.json /tmp/out/
+          git config user.name "paun-snapshot-bot"
+          git config user.email "paun-snapshot-bot@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin data >/dev/null 2>&1; then
+            git fetch origin data && git checkout -B data origin/data
+          else
+            git checkout --orphan data && git rm -rf . >/dev/null 2>&1 || true
+          fi
+          cp /tmp/out/market-snapshot.json .
+          git add market-snapshot.json
+          git diff --cached --quiet && echo "no change" && exit 0
+          git commit -m "snapshot $(date -u +%F)"
+          git push origin data

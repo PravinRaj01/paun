@@ -1,0 +1,248 @@
+{
+  "version": 2,
+  "trained_through": "2026-09-29",
+  "rows": 4010,
+  "spec": {
+    "horizon": 5,
+    "label_k": 0.75,
+    "label_vol_lambda": 0.94,
+    "classes": [
+      "Bearish Retracement",
+      "Sideways Consolidation",
+      "Bullish Breakout"
+    ],
+    "raw_columns": [
+      "xau",
+      "dxy",
+      "us10y",
+      "real10y",
+      "gvz",
+      "oil",
+      "usdmyr",
+      "sp500"
+    ],
+    "features": [
+      "ret_1d",
+      "ret_5d",
+      "ret_20d",
+      "vol_20d",
+      "bb_bandwidth",
+      "ma20_spread",
+      "ma50_spread",
+      "ma200_spread",
+      "dxy_ret_5d",
+      "us10y_chg_5d",
+      "real10y_chg_5d",
+      "usdmyr_ret_5d",
+      "gvz_level",
+      "gvz_chg_5d",
+      "sigma_5d",
+      "ret_5d_z",
+      "ret_20d_z",
+      "ma20_z",
+      "ma50_z",
+      "ma200_z"
+    ],
+    "all_features": [
+      "ret_1d",
+      "ret_5d",
+      "ret_20d",
+      "vol_20d",
+      "rsi_14",
+      "bb_bandwidth",
+      "bb_pct_b",
+      "ma20_spread",
+      "ma50_spread",
+      "ma200_spread",
+      "dxy_ret_5d",
+      "us10y_chg_5d",
+      "real10y_chg_5d",
+      "oil_ret_5d",
+      "usdmyr_ret_5d",
+      "sp500_ret_5d",
+      "gvz_level",
+      "gvz_chg_5d",
+      "sigma_5d",
+      "ret_5d_z",
+      "ret_20d_z",
+      "ma20_z",
+      "ma50_z",
+      "ma200_z"
+    ],
+    "min_history": 200
+  },
+  "classes": [
+    "Bearish Retracement",
+    "Sideways Consolidation",
+    "Bullish Breakout"
+  ],
+  "candidate": "C5",
+  "catboost_params": {
+    "loss_function": "MultiClass",
+    "iterations": 300,
+    "learning_rate": 0.03,
+    "depth": 4,
+    "l2_leaf_reg": 30,
+    "random_seed": 42,
+    "verbose": 0,
+    "allow_writing_files": false
+  },
+  "shrink": {
+    "w": 1.0,
+    "prior": [
+      0.19576059850374064,
+      0.5670822942643392,
+      0.2371571072319202
+    ]
+  },
+  "cv_folds": [
+    {
+      "fold": 0,
+      "train_rows": 623,
+      "val_start": "2013-04-19",
+      "val_end": "2015-10-09",
+      "logloss": 0.9707078719953682,
+      "logloss_prior": 0.9729273666539022,
+      "brier": 0.5727194378365471,
+      "accuracy": 0.6032,
+      "macro_f1": 0.3095772540216985,
+      "beats_prior": true
+    },
+    {
+      "fold": 1,
+      "train_rows": 1248,
+      "val_start": "2015-10-12",
+      "val_end": "2018-04-10",
+      "logloss": 1.0484885666194603,
+      "logloss_prior": 1.0390238879390639,
+      "brier": 0.6294237216325067,
+      "accuracy": 0.4448,
+      "macro_f1": 0.3007192892250363,
+      "beats_prior": false
+    },
+    {
+      "fold": 2,
+      "train_rows": 1873,
+      "val_start": "2018-04-11",
+      "val_end": "2020-10-01",
+      "logloss": 0.9532979498290075,
+      "logloss_prior": 0.9334039997577743,
+      "brier": 0.5618154202926063,
+      "accuracy": 0.6176,
+      "macro_f1": 0.2751649590211698,
+      "beats_prior": false
+    },
+    {
+      "fold": 3,
+      "train_rows": 2498,
+      "val_start": "2020-10-02",
+      "val_end": "2023-03-28",
+      "logloss": 0.9455737027630825,
+      "logloss_prior": 0.9642990209702315,
+      "brier": 0.5573279291798352,
+      "accuracy": 0.5888,
+      "macro_f1": 0.24706277274253105,
+      "beats_prior": true
+    },
+    {
+      "fold": 4,
+      "train_rows": 3123,
+      "val_start": "2023-03-29",
+      "val_end": "2025-09-19",
+      "logloss": 0.9735347227122926,
+      "logloss_prior": 0.993863376157146,
+      "brier": 0.5802923067533615,
+      "accuracy": 0.5456,
+      "macro_f1": 0.2355785837651123,
+      "beats_prior": true
+    }
+  ],
+  "test": {
+    "logloss": 1.004421137675431,
+    "logloss_prior": 1.0088450974763334,
+    "brier": 0.5925745026237518,
+    "accuracy": 0.5436507936507936,
+    "macro_f1": 0.23479005998286204,
+    "beats_prior": true
+  },
+  "bands_test": {
+    "test_rows": 252,
+    "garch": {
+      "coverage_p10_p90": 0.7530364372469636,
+      "pinball": 0.009976227857011048
+    },
+    "ewma": {
+      "coverage_p10_p90": 0.7935222672064778,
+      "pinball": 0.010053554031649961
+    },
+    "constant_vol_baseline": {
+      "coverage_p10_p90": 0.4979757085020243,
+      "pinball": 0.010603378662770327
+    }
+  },
+  "feature_importance": {
+    "vol_20d": 11.718018771239384,
+    "sigma_5d": 10.377376550792674,
+    "gvz_level": 9.889929782268103,
+    "ma200_z": 9.802929612267683,
+    "bb_bandwidth": 9.002110479879633,
+    "ma200_spread": 5.405314414663238,
+    "usdmyr_ret_5d": 4.698175176141958,
+    "ma50_spread": 4.539411340403089,
+    "ma50_z": 4.162613428312407,
+    "ret_20d": 4.06255569553692,
+    "ret_20d_z": 3.5286652919689674,
+    "real10y_chg_5d": 3.2773723085324793,
+    "ma20_z": 3.2172235473882043,
+    "gvz_chg_5d": 3.156732398795274,
+    "us10y_chg_5d": 2.5542807772620035,
+    "ma20_spread": 2.5375926761278778,
+    "dxy_ret_5d": 2.3175629181013386,
+    "ret_5d_z": 2.0014646649462136,
+    "ret_5d": 1.920862724114486,
+    "ret_1d": 1.829807441258073
+  },
+  "onnx": {
+    "inputs": [
+      {
+        "name": "features",
+        "shape": [
+          "N",
+          20
+        ],
+        "type": "tensor(float)"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "label",
+        "shape": [
+          "N"
+        ],
+        "type": "tensor(int64)"
+      },
+      {
+        "name": "probabilities",
+        "shape": [
+          "N",
+          3
+        ],
+        "type": "tensor(float)"
+      }
+    ],
+    "max_abs_diff": 1.4480528209848131e-07,
+    "zipmap_stripped": true
+  },
+  "acceptance": {
+    "skill_evidence": false,
+    "oof_gain_ci90": [
+      -0.009537374779640641,
+      0.013389032907719938
+    ],
+    "model_a_ship": false,
+    "model_b_ship": true,
+    "recommended_band": "ewma",
+    "folds_beating_prior": 3,
+    "oof_ece": 0.0313671903134066
+  }
+}

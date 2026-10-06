@@ -1,0 +1,36 @@
+{
+  "candidate": "C5",
+  "features": [
+    "ret_1d",
+    "ret_5d",
+    "ret_20d",
+    "vol_20d",
+    "bb_bandwidth",
+    "ma20_spread",
+    "ma50_spread",
+    "ma200_spread",
+    "dxy_ret_5d",
+    "us10y_chg_5d",
+    "real10y_chg_5d",
+    "usdmyr_ret_5d",
+    "gvz_level",
+    "gvz_chg_5d",
+    "sigma_5d",
+    "ret_5d_z",
+    "ret_20d_z",
+    "ma20_z",
+    "ma50_z",
+    "ma200_z"
+  ],
+  "params": {
+    "loss_function": "MultiClass",
+    "iterations": 300,
+    "learning_rate": 0.03,
+    "depth": 4,
+    "l2_leaf_reg": 30,
+    "random_seed": 42
+  },
+  "shrink_mode": "none",
+  "shrink_w": 1.0,
+  "qualified": true
+}
