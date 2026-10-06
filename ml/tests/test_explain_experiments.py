@@ -124,3 +124,40 @@ def test_data_quality_report_flags_gap_stale_run_and_spike():
     assert rep.loc["x", "longest_gap"] == 6
     assert rep.loc["x", "longest_stale"] >= 9
     assert rep.loc["x", "extreme_moves"] >= 1
+
+
+# ---------------------------------------------------------------- resilience of the daily job
+def test_with_retries_recovers_from_transient_failures_and_backs_off():
+    calls, waits = [], []
+
+    def flaky():
+        calls.append(1)
+        if len(calls) < 3:
+            raise RuntimeError("rate limited")
+        return "ok"
+
+    assert data.with_retries(flaky, tries=4, base_delay=3, sleep=waits.append) == "ok"
+    assert len(calls) == 3 and waits == [3, 6]  # exponential back-off between attempts
+
+
+def test_with_retries_gives_up_and_reraises_after_the_last_attempt():
+    waits = []
+
+    def always_fails():
+        raise ValueError("blocked")
+
+    with pytest.raises(ValueError):
+        data.with_retries(always_fails, tries=3, base_delay=1, sleep=waits.append)
+    assert waits == [1, 2]  # no pointless wait after the final attempt
+
+
+def test_stale_snapshots_are_refused_but_normal_weekend_gaps_pass():
+    import datetime as dt
+
+    from paun_ml.snapshot import check_fresh
+
+    today = dt.date(2026, 10, 12)  # a Monday
+    assert check_fresh(dt.date(2026, 10, 9), today) == 3  # Friday close, normal
+    assert check_fresh(dt.date(2026, 10, 8), today) == 4  # plus a holiday, still fine
+    with pytest.raises(SystemExit):
+        check_fresh(dt.date(2026, 10, 1), today)  # 11 days: the feed stalled
