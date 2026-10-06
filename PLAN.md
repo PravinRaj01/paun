@@ -129,7 +129,7 @@ with the ML forecasting model**. Decisions confirmed by the user (2026-10-06):
 - G6 Vault import (`src/routes/vault.tsx:63`) silently ignores errors, **replaces** the whole
   vault instead of merging, no purity normalisation (pending item, extended).
 - G7 `resetAll` doesn't clear vault/theme — confirm intended.
-- G8 No test runner at all (add Vitest for `gold.ts` math, band engine, feature parity).
+- G8 No test runner at all → 🟡 partly done: Vitest + 13 forecast/parity tests exist; tests for `gold.ts` money math land in roadmap item 2c.
 - G9 Stale docs: README titled "Gold Compass" / npm instructions; `.lovable` plan mentions
   `vite-plugin-pwa`, contradicting manifest-only.
 - G10 Forecast UI needs a bilingual "not financial advice" disclaimer and data-date staleness badge.
@@ -221,7 +221,7 @@ with the ML forecasting model**. Decisions confirmed by the user (2026-10-06):
 - **Where / output:** `ml/benchmarks/` (own `requirements-bench.txt`, so PyTorch never enters the main workspace) → `ml/reports/benchmarks.md`
   with a candidate table + chart following the existing evaluate.py style. Decision rule: only consider adopting a pretrained model if it beats our
   baseline on the held-out year **and** passes A4; otherwise we keep the current pipeline and record the evidence.
-- **When:** after the TypeScript port (ML-6), so the comparison uses our best Model A. Also the natural entry point for the ML-4 TFT challenger.
+- **When:** last on the roadmap (order 6, after the backend phase) — see "Reordered 2026-10-07". Also the natural entry point for the ML-4 TFT challenger.
 
 ### ML-5 Daily market snapshot (CORS & keys strategy)
 - GitHub Action `.github/workflows/market-snapshot.yml`, cron daily ~22:30 UTC (after US close),
@@ -337,26 +337,31 @@ Steps (all small; do before the backend phase):
 The `data` branch stays for the daily bot commits (keeps `main` history clean) — no longer because of Lovable.
 
 ### Sequencing
-| Order | Item |
-|---|---|
-| 0 | ML-0 housekeeping (PLAN.md, `ml/` scaffold) |
-| 1 | ML-1 → ML-3 (Colab training + evaluation) |
-| 2 | ML-5 snapshot Action + ML-6 app integration (fixes G3/G4/G5/G8) |
-| 2a | **Platform: leave Lovable tooling + Cloudflare deploy + publish the snapshot Action** (see "Platform & deployment"; before anything that needs a backend) |
-| 2b | ML-B pretrained-forecaster benchmark (after ML-6; internal, does not ship) |
-| 3 | 3C DCA Backtester (reuses snapshot history) |
-| 4 | 3D Receipt/Hallmark Scanner |
-| 5 | 2 Notifications + 3E Crowdsourcing (on `paun-api` + Neon) |
-| later | ML-4 TFT challenger; parked ideas |
+| Order | Item | Status |
+|---|---|---|
+| 0–2 | ML scaffold, training + evaluation, snapshot Action, app integration (ML-0 … ML-6 first slice) | ✅ done |
+| 2a | Platform: leave Lovable + Cloudflare deploy + daily snapshot Action (see "Platform & deployment") | 🟡 remaining: confirm the first Cloudflare auto-deploy, confirm the first *scheduled* snapshot run, Lovable cleanup (step 6) |
+| **2c** *(new)* | **Safety net:** PR checks (tests + typecheck on every PR), tests for the app's money math (closes G8), Vault import fix (moved here from "Pending") | next — shipped with 2a's step 6 as one housekeeping PR |
+| 3 | 3C DCA Backtester (real 5-year history is already in the snapshot) | |
+| 4 | 3D Receipt/Hallmark Scanner — first use of `paun-api` (needs the owner's Gemini/Groq key) | |
+| 5 | 2 Notifications + 3E Street rates on `paun-api` + Neon (needs the owner's Neon account) | |
+| **6** *(moved from 2b)* | ML-B pretrained-forecaster benchmark — research only, never ships | |
+| later | ML-4 TFT challenger; parked ideas | |
+
+**Reordered 2026-10-07 (owner-approved).** ML-B moved to last because it cannot change what ships while rule A4 blocks Model A, and it is
+compute-heavy: its value is deciding whether Model A or the bands deserve more work, which is not urgent. 2c was added because nothing runs
+automatically on pull requests today, the app's money math has no tests, and the Vault import can silently replace a user's whole vault
+(a data-loss risk).
+
+**2c acceptance (Vault import):** strict schema (array of `{id?, name, weight>0, purity ∈ PURITIES, paidUsd>=0, date YYYY-MM-DD}`); legacy
+purity codes (`"22K"` → `"916"`); an *unknown* purity is skipped, never silently turned into 916; **merge, never replace**; duplicate ids
+skipped; toasts "Invalid JSON file", "Expected a list of items", "Imported 4 items (1 skipped: invalid purity)".
 
 ### Pending (carried over)
-- Vault import validation: strict schema (array of `{id?, name, weight>0, purity ∈ PURITIES,
-  paidUsd, date YYYY-MM-DD}`), legacy codes (`"22K"`→`"916"` via `normPurity`), **merge not
-  replace**, toasts: "Invalid JSON syntax", "Expected an array of items", "Imported 4 items
-  (1 skipped: invalid purity)".
+- ~~Vault import validation~~ → moved to roadmap item **2c** (acceptance criteria copied there).
 - GoldMap geolocation permission flow + real-phone map behaviour: real-device verification.
 - i18next auto-translation CLI not set up (manual en/ms with locked glossary).
-- G7 resetAll scope, G9 README/doc cleanup.
+- G7 resetAll scope. G9 README/doc cleanup is part of the housekeeping PR (2a step 6).
 
 ### Parked ideas
 - Ar-Rahnu calculator: Marhun value, margin 65–80%, upah simpan ≈ RM0.60–0.85 per RM100/month,
