@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { AnimatePresence, motion, useMotionValue, useSpring, useTransform, type MotionValue } from "motion/react";
-import { ArrowLeftRight, BookOpen, Vault, Calculator, LineChart, Settings2, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, BookOpen, Vault, Calculator, LineChart, PiggyBank, Settings2, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import { ModeToggle } from "./ModeToggle";
 import { BasisBadge } from "./BasisBadge";
 import { GoldGuide } from "./GoldGuide";
@@ -10,6 +10,7 @@ import { useI18n } from "@/lib/i18n";
 type Item = { to: string; label: string; icon: LucideIcon; kind: "link" | "btn" | "view" | "guide" };
 
 const BASE = 40;
+const BASE_COMPACT = 36; // the horizontal (phone) dock: 8 icons must fit a 360px-wide screen
 const MAX = 64;
 const RANGE = 140;
 
@@ -24,7 +25,8 @@ function DockIcon({ item, pointer, vertical, active, onSettings, onView, onGuide
     const r = el.getBoundingClientRect();
     return p - (vertical ? r.top + r.height / 2 : r.left + r.width / 2);
   });
-  const sizeRaw = useTransform(dist, [-RANGE, 0, RANGE], [BASE, MAX, BASE], { clamp: true });
+  const base = vertical ? BASE : BASE_COMPACT;
+  const sizeRaw = useTransform(dist, [-RANGE, 0, RANGE], [base, MAX, base], { clamp: true });
   const size = useSpring(sizeRaw, { mass: 0.1, stiffness: 170, damping: 12 });
   const iconSize = useTransform(size, (s) => s * 0.45);
   const Icon = item.icon;
@@ -64,6 +66,7 @@ function Dock({ vertical, onSettings, className }: { vertical: boolean; onSettin
     { to: "/dashboard", label: t("calculator"), icon: Calculator, kind: "link" },
     { to: "/markets", label: t("markets"), icon: LineChart, kind: "link" },
     { to: "/arbitrage", label: t("arbitrage"), icon: ArrowLeftRight, kind: "link" },
+    { to: "/dca", label: t("dca"), icon: PiggyBank, kind: "link" },
     { to: "/vault", label: t("vault"), icon: Vault, kind: "link" },
     { to: "", label: t("guide"), icon: BookOpen, kind: "guide" },
     { to: "", label: t("viewOptions"), icon: SlidersHorizontal, kind: "view" },
@@ -107,7 +110,7 @@ function Dock({ vertical, onSettings, className }: { vertical: boolean; onSettin
     <nav aria-label="Main"
       onPointerMove={move} onPointerDown={move}
       onPointerLeave={() => pointer.set(Infinity)} onPointerUp={(e) => e.pointerType !== "mouse" && pointer.set(Infinity)}
-      className={`z-30 flex gap-2.5 rounded-3xl border bg-card/70 p-2 shadow-2xl backdrop-blur-xl ${vertical ? "flex-col items-start" : "items-end"} ${className}`}
+      className={`z-30 flex rounded-3xl border bg-card/70 p-2 shadow-2xl backdrop-blur-xl ${vertical ? "flex-col items-start gap-2.5" : "items-end gap-1.5"} ${className}`}
       style={{ touchAction: "none" }}>
       {items.map((it) => (
         <DockIcon key={it.label} item={it} pointer={pointer} vertical={vertical}
