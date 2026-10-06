@@ -564,7 +564,7 @@ X = df[features]
 fit_predict = tr.shrink_fit_predict(params) if cfg["shrink_mode"] == "inner" else tr.catboost_fit_predict(params)
 folds, oof = tr.walk_forward_cv(X, y_all, n_tr, fit_predict=fit_predict)
 test_m, test_df, _ = tr.holdout_test(X, y_all, n_tr, N_TEST, fit_predict)
-pd.Series(test_m).round(4)
+pd.Series({k: round(v, 4) if isinstance(v, float) else v for k, v in test_m.items()})   # beats_prior is a bool, so round per value
 """)
 md(r"""
 Compare `logloss` with `logloss_prior`. The gap is small: the model is **close to climatology**, which is what an honest model of a noisy market looks like.
