@@ -328,7 +328,10 @@ Steps (all small; do before the backend phase):
    `wrangler deploy --dry-run` passes (66 modules, ~4.2 MB / 0.9 MB gzipped, 30 static files). **Remaining — needs the owner's Cloudflare login:** a real preview deploy to check: SSR CPU time within the free plan's per-request budget (else the ~$5 plan, or make Markets client-only); `/data/market-snapshot.json`
    cached sensibly; raw.githubusercontent snapshot fetch works from the deployed origin.
 4. **Cloudflare Git integration** on `main` (build `bun run build`; test that Cloudflare's build env handles Bun, else npm).
-5. **Push + run the `market-snapshot.yml` Action** once (`workflow_dispatch`) so the `data` branch exists and the card stops showing "Offline copy".
+5. 🟡 **Pushed on branch `feat/forecast-platform` (PR pending merge).** The Action only becomes runnable once it is on `main`. Hardened first: Yahoo/FRED retries with
+   back-off (cloud runners are often rate-limited) and a freshness guard that fails the job rather than publish data older than 6 days. **To do after merging:** GitHub -> Actions ->
+   `market-snapshot` -> Run workflow; confirm the `data` branch and its raw URL exist; reload the site and check the "Offline copy" badge is gone. Known risk: Yahoo may block
+   GitHub's IPs; if so, the job fails visibly and the app keeps its bundled snapshot - then switch the price source for the job.
 6. **Lovable leftovers cleanup:** `lovable-error-reporting.ts` + its use in `__root.tsx` (replace with plain logging), `.lovable/` plans (archive to `docs/archive/`),
    `.gitignore #lovable`, README "Build with Lovable", AGENTS.md history warning, comments mentioning Lovable sync.
 The `data` branch stays for the daily bot commits (keeps `main` history clean) — no longer because of Lovable.
