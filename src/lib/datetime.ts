@@ -47,6 +47,18 @@ export function formatMoment(iso: string, lang: Language, timeZone?: string): st
   }).format(ms);
 }
 
+/** "12 minutes ago" / "2 hours ago" / "now", in the page's language. Just a distance, so it needs no zone. */
+export function formatAgo(iso: string, now: Date, lang: Language): string {
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms)) return "";
+  const rtf = new Intl.RelativeTimeFormat(locale(lang), { numeric: "auto" });
+  const secs = Math.max(0, Math.round((now.getTime() - ms) / 1000));
+  if (secs < 60) return rtf.format(0, "second");
+  if (secs < 3600) return rtf.format(-Math.floor(secs / 60), "minute");
+  if (secs < 86_400) return rtf.format(-Math.floor(secs / 3600), "hour");
+  return rtf.format(-Math.floor(secs / 86_400), "day");
+}
+
 /** Today's date as "YYYY-MM-DD" in the viewer's timezone (`toISOString().slice(0, 10)` would give the UTC date). */
 export function localToday(now: Date = new Date(), timeZone?: string): string {
   return new Intl.DateTimeFormat("en-CA", {

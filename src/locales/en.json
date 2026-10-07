@@ -202,5 +202,12 @@
   "historyTz": "Dates are New York trading days.",
   "priceCloseOf": "Close of {{date}} ({{tz}}).",
   "priceFetchedAt": "Fetched {{when}}.",
-  "priceSetAt": "Set {{when}}."
+  "priceSetAt": "Set {{when}}.",
+  "spotFeedLive": "Live · {{ago}} · {{when}}",
+  "spotFeedClosed": "Market closed · last price {{when}}",
+  "spotFeedDelayed": "Price feed delayed · last price {{when}}",
+  "spotFeedSourceYahoo": "Gold futures (GC=F) via Yahoo Finance",
+  "spotFeedSourceGoldapi": "Spot price via GoldAPI",
+  "spotFeedClose": "Latest daily close, {{date}} ({{tz}})",
+  "spotFeedPending": "Fetching the latest price…"
 }
