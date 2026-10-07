@@ -15,6 +15,26 @@ describe("GET /health", () => {
   });
 });
 
+describe("GET /probe (temporary, phase 3b.4)", () => {
+  const yahoo = (price: number) =>
+    (async () =>
+      new Response(JSON.stringify({ chart: { result: [{ meta: { regularMarketPrice: price, regularMarketTime: 1791300000, symbol: "GC=F", currency: "USD" } }] } }))) as unknown as typeof fetch;
+
+  it("reports whether Yahoo answered, and remembers the answer for 30 s so visitors cannot hammer Yahoo", async () => {
+    let calls = 0;
+    const counting = (async (...a: Parameters<typeof fetch>) => (calls++, yahoo(4172.3)(...a))) as unknown as typeof fetch;
+    const t0 = new Date("2026-10-07T10:00:00Z");
+    const first = await handle(new Request("https://x/probe"), {}, t0, counting);
+    const body = (await first.json()) as { yahooOk: boolean; attempts: { priceUsdOz: number }[] };
+    expect(body.yahooOk).toBe(true);
+    expect(body.attempts[0]?.priceUsdOz).toBe(4172.3);
+    await handle(new Request("https://x/probe"), {}, new Date(t0.getTime() + 10_000), counting);
+    expect(calls).toBe(1);
+    await handle(new Request("https://x/probe"), {}, new Date(t0.getTime() + 31_000), counting);
+    expect(calls).toBe(2);
+  });
+});
+
 describe("routing", () => {
   it("unknown paths are 404 with a JSON body", async () => {
     const res = await call("/nope");
