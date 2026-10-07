@@ -1,0 +1,20 @@
+// Cloudflare Worker config for Paun's backend (health check now; the live-price feed and the scanner later).
+// Deployed on its own, separately from the web app (../../wrangler.jsonc):  bun run deploy:api
+// Secrets (GOLDAPI_KEY, GEMINI_API_KEY, ...) are never written here: set them with `wrangler secret put`.
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "paun-api",
+  "main": "src/index.ts",
+
+  // Pinned on purpose, like the web Worker: bump it deliberately after testing.
+  "compatibility_date": "2026-10-06",
+
+  // Logs show status codes and timings only; nothing here logs a request body (the scanner's photos must never be logged).
+  "observability": {
+    "logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": true, "persist": true },
+    "traces": { "enabled": false, "head_sampling_rate": 1, "persist": true },
+  },
+
+  // Needed by `wrangler preview`, which Cloudflare runs for builds of branches other than main (same as the web Worker).
+  "previews": {},
+}

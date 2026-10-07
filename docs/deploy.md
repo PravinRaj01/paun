@@ -36,6 +36,28 @@ Connect the GitHub repo in the dashboard (Workers -> Create -> Import a reposito
 build command `bun run build`, deploy command `npx wrangler deploy`, root directory `/`. If the build environment cannot run Bun, use
 `npm install && npm run build`. Production branch: `main`.
 
+## The backend Worker (`paun-api`)
+
+A second, separate Worker in `workers/paun-api/` (own `wrangler.jsonc`, own deploys). Today it answers `GET /health`; the live-price feed
+(`/spot`) and the receipt scanner follow. Its URL will be `https://paun-api.paun-gold.workers.dev`.
+
+```sh
+bun run dev:api         # runs it locally in the Workers runtime at http://127.0.0.1:8787 (no account needed)
+bun run typecheck:api   # typecheck; the unit tests run with the rest: bun run test
+bun run deploy:api      # first deploy / manual deploy (needs `wrangler login`)
+```
+
+**Continuous deployment (one-time dashboard setup):** Workers & Pages -> Create -> Import a repository -> pick `PravinRaj01/paun` again, and set:
+* Worker name `paun-api` (must match `workers/paun-api/wrangler.jsonc`)
+* Root directory `workers/paun-api`
+* Build command: leave empty
+* Deploy command `npx wrangler@4.147.0 deploy`
+* Production branch `main`; and under Build watch paths include only `workers/paun-api/*`
+
+Then, on the existing **paun-web** Worker, add `workers/paun-api/*` to the build watch **exclude** paths, so a backend change does not rebuild the site.
+
+Secrets and bindings (set later, by you, never committed): `wrangler secret put GOLDAPI_KEY -c workers/paun-api/wrangler.jsonc`, and a KV namespace for the live price.
+
 ## Custom domain
 
 Add the domain to your Cloudflare account, then uncomment `routes` in `wrangler.jsonc` (or add it under Workers -> Settings -> Domains).

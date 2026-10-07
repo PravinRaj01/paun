@@ -10,6 +10,9 @@
     "preview": "vite preview",
     "preview:worker": "vite build && wrangler dev",
     "deploy": "vite build && wrangler deploy",
+    "dev:api": "wrangler dev -c workers/paun-api/wrangler.jsonc",
+    "deploy:api": "wrangler deploy -c workers/paun-api/wrangler.jsonc",
+    "typecheck:api": "tsc -p workers/paun-api",
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run"
