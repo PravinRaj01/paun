@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Download, Trash2, Upload } from "lucide-react";
+import { Camera, Download, Trash2, Upload } from "lucide-react";
 import { AppShell } from "@/components/gold/AppShell";
+import { ScanReceiptDialog } from "@/components/gold/ScanReceiptDialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { useGold } from "@/lib/gold-store";
 import { baseRateOf, fineOf, fmt, GRAMS_PER_OUNCE, PURITIES, sellQuote, DEFAULT_TRADE, type PurityId, type VaultItem } from "@/lib/gold";
 import { formatCalendarDate, localToday } from "@/lib/datetime";
 import { useI18n, type CopyKey } from "@/lib/i18n";
+import { scanToVaultForm, type ScanResponse } from "@/lib/scan";
 import { parseVaultImport, type SkipReason } from "@/lib/vault-import";
 import { toast } from "sonner";
 
@@ -42,6 +44,8 @@ function VaultPage() {
   const { t, language } = useI18n();
   const nav = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+  const [scanOpen, setScanOpen] = useState(false);
   const base = baseRateOf(settings, countries);
   const cur = settings.baseCurrency;
   const money = (n: number) => fmt(n * base, cur, settings.decimals);
@@ -64,6 +68,26 @@ function VaultPage() {
     if (!(w > 0)) return;
     setVault((v) => [...v, { id: crypto.randomUUID(), name: form.name || `${w} g ${form.purity}`, weight: w, purity: form.purity, paidUsd: Math.max(0, Number(form.paid) / base), date: form.date }]);
     setForm((f) => ({ ...f, name: "", weight: "", paid: "" }));
+  };
+  // The scanner only FILLS the form below; the user checks every field and presses Add themselves.
+  const SCAN_FIELD: Record<"weight" | "purity" | "paid" | "date", CopyKey> = { weight: "scanFieldWeight", purity: "scanFieldPurity", paid: "scanFieldPaid", date: "scanFieldDate" };
+  const onScanRead = (res: ScanResponse) => {
+    if (!res.readable) {
+      toast.error(t("scanNotReceipt"));
+      return;
+    }
+    const fill = scanToVaultForm(res.fields, { settings, countries });
+    setForm((f) => ({ ...f, ...fill.patch }));
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const notes = [t("scanFilled")];
+    if (fill.unread.length) {
+      const fields = fill.unread.map((k) => t(SCAN_FIELD[k])).join(", ");
+      notes.push(t("scanMissing", { fields, them: fill.unread.length > 1 ? (language === "ms" ? "semuanya" : "them") : (language === "ms" ? "medan itu" : "it") }));
+    }
+    if (fill.unknownCurrency) notes.push(t("scanUnknownCurrency", { currency: fill.unknownCurrency }));
+    if (res.confidence !== "high") notes.push(t("scanHardToRead"));
+    const caution = fill.unread.length > 0 || res.confidence !== "high";
+    (caution ? toast.warning : toast.success)(notes.join(" "), { duration: 12_000 });
   };
   const sellThis = (it: VaultItem) => {
     setTrade((p) => ({ ...p, side: "sell", weight: it.weight, purity: it.purity, askingPrice: 0 }));
@@ -109,7 +133,8 @@ function VaultPage() {
             <h2 className="font-display text-2xl">{t("vaultTitle")}</h2>
             <p className="text-sm text-muted-foreground">{t("vaultHint")}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => setScanOpen(true)}><Camera className="mr-1 h-4 w-4" />{t("scanButton")}</Button>
             <Button size="sm" variant="outline" onClick={exportJson} disabled={!vault.length}><Download className="mr-1 h-4 w-4" />{t("exportJson")}</Button>
             <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}><Upload className="mr-1 h-4 w-4" />{t("importJson")}</Button>
             <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={(e) => e.target.files?.[0] && importJson(e.target.files[0])} />
@@ -145,7 +170,7 @@ function VaultPage() {
           ))}
         </div>
 
-        <div className="grid gap-3 rounded-lg border bg-card p-4 sm:grid-cols-5 sm:items-end">
+        <div ref={formRef} className="grid gap-3 rounded-lg border bg-card p-4 sm:grid-cols-5 sm:items-end">
           <div className="space-y-1.5 sm:col-span-2"><Label>{t("itemName")}</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Rantai 916" /></div>
           <div className="space-y-1.5"><Label>{t("weight")}</Label><Input type="number" inputMode="decimal" className="num" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>{t("purity")}</Label>
@@ -159,6 +184,7 @@ function VaultPage() {
           <Button className="sm:col-start-5" onClick={add}>{t("addItem")}</Button>
         </div>
       </div>
+      <ScanReceiptDialog open={scanOpen} onOpenChange={setScanOpen} onRead={onScanRead} />
     </AppShell>
   );
 }
