@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { SpotBar } from "./SpotBar";
 import { SettingsDialog } from "./SettingsDialog";
 import { SideDock } from "./SideDock";
+import { LiveKeyPrompt } from "./LiveKeyPrompt";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -11,6 +12,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <SideDock onSettings={() => setOpen(true)} />
       <main className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8">{children}</main>
       <SettingsDialog open={open} onOpenChange={setOpen} />
+      <LiveKeyPrompt onAddKey={() => setOpen(true)} />
     </div>
   );
 }

@@ -63,6 +63,7 @@ export type Settings = {
   mode: "simple" | "pro";
   priceBasis: "raw" | "retail"; // raw spot benchmark vs typical shop counter price
   language: "en" | "ms";
+  livePromptSeen: boolean; // the one-time "add your own GoldAPI key?" pop-up has been answered or closed
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -76,6 +77,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mode: "simple",
   priceBasis: "retail",
   language: "en",
+  livePromptSeen: false,
 };
 
 export const DEFAULT_COUNTRIES: Country[] = [
@@ -100,6 +102,13 @@ export const DEFAULT_TRADE: Trade = {
 /** True while the user has never set a price themselves: still the shipped default, untouched. */
 export const hasDefaultSpot = (s: Settings) =>
   s.source === "manual" && s.updatedAt === "" && s.spotUsdOz === DEFAULT_SETTINGS.spotUsdOz;
+
+/**
+ * Should the one-time "want a live price?" pop-up appear? Only for people on the default price (the latest daily
+ * close) who have no key of their own, and only once. Never for someone who typed a price or already added a key.
+ */
+export const shouldPromptForLiveKey = (s: Settings) =>
+  !s.livePromptSeen && s.apiKey.trim() === "" && s.source !== "live" && (s.source === "market" || hasDefaultSpot(s));
 
 export const karatOf = (p: string) => PURITIES.find((x) => x.id === normPurity(p))!.karat;
 export const fineOf = (p: string) => PURITIES.find((x) => x.id === normPurity(p))!.fineness / 1000;
@@ -209,18 +218,4 @@ export async function fetchLiveSpot(apiKey: string): Promise<number> {
   const price = Number(data?.price);
   if (!price || !isFinite(price)) throw new Error(data?.error || "no price in the response");
   return price;
-}
-
-/** Deterministic pseudo-random trend ending at the current spot (indicative, not real history). */
-export type Range = "1D" | "1W" | "1M" | "1Y";
-export function spotSeries(spot: number, range: Range) {
-  const cfg = { "1D": [48, 30 * 60e3, 0.0012], "1W": [56, 3 * 3600e3, 0.003], "1M": [60, 12 * 3600e3, 0.006], "1Y": [52, 7 * 86400e3, 0.018] }[range];
-  const [n, step, vol] = cfg as [number, number, number];
-  let seed = range.charCodeAt(1) * 9301 + Math.floor(Date.now() / 86400e3);
-  const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280) - 0.5;
-  const drift = range === "1Y" ? 0.0035 : 0.0004;
-  const vals = [spot];
-  for (let i = 1; i < n; i++) vals.unshift(vals[0]! * (1 - drift - rnd() * vol * 2));
-  const now = Date.now();
-  return vals.map((v, i) => ({ t: now - (n - 1 - i) * step, v }));
 }

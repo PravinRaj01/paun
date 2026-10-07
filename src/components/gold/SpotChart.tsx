@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useGold } from "@/lib/gold-store";
-import { baseRateOf, BASIS_LABEL, fineOf, fmt, GRAMS_PER_OUNCE, premiumOf, PURITIES, spotSeries, type PurityId } from "@/lib/gold";
+import { baseRateOf, BASIS_LABEL, fineOf, fmt, GRAMS_PER_OUNCE, premiumOf, PURITIES, type PurityId } from "@/lib/gold";
 import { useSnapshot } from "@/lib/forecast/snapshot";
 import { useI18n } from "@/lib/i18n";
 
@@ -25,15 +25,27 @@ export function SpotChart() {
   const prem = country ? premiumOf(country, basis) : 0;
   const k = (base / (unit === "g" ? GRAMS_PER_OUNCE : 1)) * fineOf(purity) * (1 + prem / 100);
   const real = snap.status === "ready" ? snap.snapshot : null;
-  // Real daily closes from the published snapshot; the synthetic trend is only a fallback if it cannot be loaded at all.
+  // Real daily closes from the published snapshot. There is no invented fallback: while it loads we show a placeholder,
+  // and if it cannot be loaded at all we say so.
   const data = useMemo(() => {
     if (real) {
       const h = real.longHistory;
       const rows = h.dates.flatMap((d, i) => (h.xau[i] == null ? [] : [{ t: Date.parse(`${d}T00:00:00Z`), v: h.xau[i] as number }]));
       return rows.slice(-(SESSIONS[range] + 1)).map((p) => ({ t: p.t, v: +(p.v * k).toFixed(2) }));
     }
-    return spotSeries(settings.spotUsdOz, range === "5Y" ? "1Y" : range).map((p) => ({ t: p.t, v: +(p.v * k).toFixed(2) }));
-  }, [real, settings.spotUsdOz, range, k]);
+    return [];
+  }, [real, range, k]);
+  if (!real) {
+    return (
+      <section className="rounded-lg border bg-card p-4 sm:p-5">
+        {snap.status === "error" ? (
+          <p className="py-20 text-center text-sm text-muted-foreground">{t("chartUnavailable")}</p>
+        ) : (
+          <div className="h-72 animate-pulse rounded-md bg-muted/40" role="status" aria-label={t("chartLoading")} />
+        )}
+      </section>
+    );
+  }
   const first = data[0]?.v ?? 0, last = data[data.length - 1]?.v ?? 0;
   const hi = Math.max(...data.map((d) => d.v)), lo = Math.min(...data.map((d) => d.v));
   const chg = last - first, pct = (chg / first) * 100, up = chg >= 0;
@@ -107,7 +119,7 @@ export function SpotChart() {
         <div>Low <span className="text-foreground">{f(lo)}</span></div>
       </div>
       <p className="mt-2 text-[11px] text-muted-foreground">
-        {real ? `${t("historyNote")} ${real.asOf}. ${basis === "retail" ? t("historyMarkup") : ""}` : "Latest point is your current spot price; earlier points are an indicative trend, not exact history."}
+        {`${t("historyNote")} ${real.asOf}. ${basis === "retail" ? t("historyMarkup") : ""}`}
       </p>
     </section>
   );

@@ -99,7 +99,7 @@
   "addToVault": "Add to vault",
   "added": "Added to your vault",
   "vaultTitle": "Personal vault",
-  "vaultHint": "Your gold, valued live. Saved on this device only.",
+  "vaultHint": "Your gold, valued at the latest price. Saved on this device only.",
   "itemName": "Item",
   "paidPrice": "Price paid",
   "boughtOn": "Bought on",
@@ -185,5 +185,17 @@
   "dcaNoData": "Not enough price history to run this plan.",
   "dcaLoading": "Loading price history…",
   "dcaUnavailable": "Price history couldn't be loaded. Check your connection and try again.",
-  "dcaNoteHistorical": "Ringgit amounts use the market USD/MYR rate on each purchase date (latest {{rate}}). Your watchlist's rate can differ, so today's values here may not match other pages."
+  "dcaNoteHistorical": "Ringgit amounts use the market USD/MYR rate on each purchase date (latest {{rate}}). Your watchlist's rate can differ, so today's values here may not match other pages.",
+  "livePromptTitle": "Want a live gold price?",
+  "livePromptBody": "Paun shows the latest daily close of gold by default. For a live price, add your own free GoldAPI key (goldapi.io, 100 free requests a month). It stays in this browser.",
+  "livePromptAdd": "Add my GoldAPI key",
+  "livePromptSkip": "Continue with the latest close",
+  "keyHint": "By default Paun shows the latest daily close of gold. For a live price, paste your free GoldAPI key (goldapi.io, 100 free requests a month). Requests go straight from your browser and the key stays here.",
+  "priceTipMarket": "Latest daily close of gold futures. Add a GoldAPI key in Settings for a live price.",
+  "priceTipLive": "Live price fetched with your GoldAPI key.",
+  "priceTipManual": "A price you entered in Settings.",
+  "placeholderWord": "placeholder",
+  "priceTipPlaceholder": "No price source could be reached yet, so this is a placeholder. Set a price in Settings or check your connection.",
+  "chartLoading": "Loading price history…",
+  "chartUnavailable": "Price history is unavailable right now. Check your connection and try again."
 }

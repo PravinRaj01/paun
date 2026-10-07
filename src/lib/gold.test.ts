@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import * as gold from "./gold";
 import {
   DEFAULT_SETTINGS,
   GRAMS_PER_OUNCE,
@@ -12,6 +13,7 @@ import {
   landedPerGram,
   normPurity,
   premiumOf,
+  shouldPromptForLiveKey,
   purityLabel,
   sellQuote,
   verdictOf,
@@ -211,5 +213,51 @@ describe("currency, purity and settings helpers", () => {
     expect(hasDefaultSpot({ ...DEFAULT_SETTINGS, updatedAt: "2026-10-07T00:00:00Z" })).toBe(false);
     expect(hasDefaultSpot({ ...DEFAULT_SETTINGS, source: "live" })).toBe(false);
     expect(hasDefaultSpot({ ...DEFAULT_SETTINGS, source: "market" })).toBe(false);
+  });
+});
+
+describe("shouldPromptForLiveKey (the one-time 'want a live price?' pop-up)", () => {
+  const typed = {
+    ...DEFAULT_SETTINGS,
+    source: "manual" as const,
+    updatedAt: "2026-10-07T00:00:00Z",
+    spotUsdOz: 4000,
+  };
+
+  it("shows for a brand-new visitor on the default price", () => {
+    expect(shouldPromptForLiveKey(DEFAULT_SETTINGS)).toBe(true);
+  });
+
+  it("shows for someone following the latest daily close", () => {
+    expect(
+      shouldPromptForLiveKey({
+        ...DEFAULT_SETTINGS,
+        source: "market",
+        updatedAt: "x",
+        spotUsdOz: 4165.7,
+      }),
+    ).toBe(true);
+  });
+
+  it("shows only once: never again after it was answered or closed", () => {
+    expect(shouldPromptForLiveKey({ ...DEFAULT_SETTINGS, livePromptSeen: true })).toBe(false);
+  });
+
+  it("never for someone who already has a key, or already uses a live price", () => {
+    expect(shouldPromptForLiveKey({ ...DEFAULT_SETTINGS, apiKey: "goldapi-abc" })).toBe(false);
+    expect(shouldPromptForLiveKey({ ...DEFAULT_SETTINGS, source: "live", updatedAt: "x" })).toBe(
+      false,
+    );
+    expect(shouldPromptForLiveKey({ ...DEFAULT_SETTINGS, apiKey: "   " })).toBe(true); // whitespace is not a key
+  });
+
+  it("never for someone who typed their own price", () => {
+    expect(shouldPromptForLiveKey(typed)).toBe(false);
+  });
+});
+
+describe("no invented data", () => {
+  it("the made-up price trend generator is gone and must not come back", () => {
+    expect("spotSeries" in gold).toBe(false);
   });
 });

@@ -296,6 +296,29 @@ USD/MYR) → real backtest instead of synthetic.
 - **Edge cases to test:** a month with no trading day in the data, a window longer than the history (clamp and say so), 0% and negative savings rate,
   a zero or negative contribution (rejected), missing snapshot (offline copy still works).
 
+### 3B. Live price: shared feed for the landing page, own key inside the app, and price honesty (owner decision 2026-10-07)
+**Constraint:** the owner's GoldAPI plan allows only **100 requests a month**, so one shared key cannot give every visitor a live price (every 30 min on weekdays would need ~1,100).
+**Decision:** a shared near-live feed for the **landing page only**; inside the app the default is the latest daily close, and a one-time pop-up invites the user to add their **own** GoldAPI
+key for a live price or continue with the close. Never a hard gate.
+- **Shared feed (landing page only):** Worker `workers/paun-api/` (`https://paun-api.<subdomain>.workers.dev`), cron on weekdays every ~15 min: fetch the latest gold futures price from Yahoo
+  (same instrument as the chart, no key; unofficial, so it is **tested from Cloudflare before we rely on it**), store `{ priceUsdOz, fetchedAt, provider }` in KV. **Backup:** the owner's `GOLDAPI_KEY`
+  (Worker **secret**, `wrangler secret put`, never in the repo, browser or chat) is used only when Yahoo fails, under a hard monthly budget (counter in KV; about 3 calls per weekday, capped at
+  90 a month; `MONTHLY_BUDGET` variable). `GET /spot` reads KV only, never the provider, so visitors cannot burn any quota: `{ priceUsdOz, fetchedAt, ageSeconds, stale, provider }`, short edge
+  cache, CORS allow-list. `GET /health`. If the feed is unavailable the landing page falls back to the latest close and says so. Note GoldAPI is *spot* and the chart is *futures*: the label names the provider.
+- **Inside the app (Markets, Calculator, Arbitrage, Vault, Monthly plan):** default price = latest close (as today). **First visit to an app page** (not the landing page) when the user has no own
+  key and has not chosen yet: a dialog "Want a live price?" with **[Add my GoldAPI key]** (free at goldapi.io, 100 free requests a month, the key stays in the browser; opens the key field) and
+  **[Continue with the latest close]**. Closing the dialog counts as "continue". The choice is remembered (`settings.livePromptSeen`) so it never nags; Settings always offers the key later.
+- **Forecast range:** anchored to the live price only when the user's own key supplied it (`source: "live"`); otherwise to the close. The card says which (`buildForecast(snapshot, livePrice)` already supports it).
+- **Price honesty (client only, no Cloudflare needed):** delete the invented trend (`spotSeries`) from the Markets chart: placeholder while loading, then real closes, or "history unavailable". An untouched default
+  ($2,650 placeholder) is labelled as a placeholder if no source could be reached. Plain-language copy: Settings explains the default (latest daily close) and the key option; the header label gets a short
+  explanation; the Vault subtitle no longer says "valued live".
+- **Tests:** client: `shouldPromptForLiveKey(settings)` (shown once, never for own-key or manual-price users, never on the landing page), chart never uses invented data. Worker: scheduled handler (Yahoo ok, Yahoo fails
+  then GoldAPI, budget exhausted, no key), `/spot` shape and stale flag, CORS, KV-only reads (mocked `fetch` and a fake KV).
+- **Build order:** (1) price honesty + the key pop-up (client only); (2) Worker skeleton + `/health`, deployed; (3) Yahoo-from-Cloudflare test, then `/spot` + cron with the budgeted GoldAPI backup;
+  (4) landing page reads `/spot`; (5) owner creates the KV namespace, sets the secret and approves the deploy; real fetch verified.
+- **Needs from the owner:** approval before any Cloudflare resource is created (KV namespace) or deployed; running `wrangler secret put GOLDAPI_KEY` themselves; confirming the GoldAPI terms allow showing
+  the backup price publicly (their site could not be read automatically; with Yahoo as primary this matters only when the backup is used).
+
 ### 3D. Receipt & Hallmark AI Scanner (Vision/OCR)
 Photo of receipt (Habib, Tomei, Poh Kong, kedai emas), bullion certificate, or hallmark (916,
 999.9, 750, 22K…) → extracts purity, weight (g), upah tukang, purchase date, total paid →
@@ -389,6 +412,7 @@ The `data` branch stays for the daily bot commits (keeps `main` history clean) �
 | 2a | Platform: leave Lovable + Cloudflare deploy + daily snapshot Action (see "Platform & deployment") | ✅ first Cloudflare auto-deploy confirmed (22:42 UTC, after the push to `main`); Lovable cleanup done in the housekeeping PR. 🟡 the first scheduled run DID fire (2026-10-07 01:41 UTC, about 3 h after the 22:30 slot: GitHub schedules run late) but FAILED at the publish step: the build left an untracked `market-snapshot.json` in the repo root, which blocks `git checkout data` once the data branch exists (the first, manual run only worked because the branch did not exist yet). Fixed on branch: the snapshot is built outside the repo and published by `.github/scripts/publish-snapshot.sh`, covered by 5 regression tests; to confirm after merge: run the workflow once by hand, then watch the next scheduled run |
 | **2c** *(new)* | **Safety net:** PR checks (tests + typecheck on every PR), tests for the app's money math (closes G8), Vault import fix (moved here from "Pending") | ✅ built on branch `chore/housekeeping` (PR pending review): CI workflow, 25 money-math tests, strict Vault import (checked end-to-end in a real browser: merge keeps existing items; broken file, non-list and duplicates all report correctly) |
 | 3 | 3C DCA Backtester (real 5-year history is already in the snapshot) | ✅ done 2026-10-07 (PR #3): engine `src/lib/dca.ts` with 23 hand-checked tests, page `/dca` (EN/BM) with a dock icon, checked in a real browser at desktop, 390 px and 360 px; live on the Worker |
+| **3b** *(new)* | **Live price**: shared near-live feed for the landing page (`paun-api /spot`, Yahoo + budgeted GoldAPI backup), a one-time "add your own key" pop-up inside the app, and **price honesty** (no invented trend, plain-language copy) | 🟡 spec rewritten 2026-10-07 (section 3B) for the 100-requests-a-month limit. **Step 1 built** (client only, checked in a real browser): invented trend removed, one-time key pop-up, plain-language price labels, honest placeholder. Next: Worker skeleton and the Yahoo-from-Cloudflare test; the scanner reuses the same Worker later |
 | 4 | 3D Receipt/Hallmark Scanner — first use of `paun-api` (needs the owner's Gemini key and a Turnstile widget) | 🟡 spec approved 2026-10-07 (see section 3D); next up |
 | 5 | 2 Notifications + 3E Street rates on `paun-api` + Neon (needs the owner's Neon account) | |
 | **6** *(moved from 2b)* | ML-B pretrained-forecaster benchmark — research only, never ships | |
