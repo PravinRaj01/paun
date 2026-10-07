@@ -98,6 +98,10 @@ with the ML forecasting model**. Decisions confirmed by the user (2026-10-06):
    them). Lovable is no longer part of the stack at all.
 10. **Secrets never in the browser:** Gemini/Groq/Neon keys exist only as Cloudflare Worker secrets
     (`wrangler secret put`). The client calls our own Worker, never a vendor API directly.
+11. **Every date or time shown in the app states its timezone** (owner requirement 2026-10-07). Market dates (snapshot `asOf`, chart, DCA) are **New York trading days** of the
+    gold futures exchange and are labelled as such; a date like `2026-10-06` must never shift to the previous day for viewers west of UTC. Moments (when a price was set or
+    fetched) show in the viewer's own local time with the zone name, e.g. "7 Oct 2026, 11:34 GMT+8". Dates the user types (Vault "Bought on") are "your local date". All of it is
+    formatted through `src/lib/datetime.ts`, never with `toLocale*` calls in components (a test enforces this).
 
 ---
 
@@ -314,8 +318,18 @@ key for a live price or continue with the close. Never a hard gate.
   explanation; the Vault subtitle no longer says "valued live".
 - **Tests:** client: `shouldPromptForLiveKey(settings)` (shown once, never for own-key or manual-price users, never on the landing page), chart never uses invented data. Worker: scheduled handler (Yahoo ok, Yahoo fails
   then GoldAPI, budget exhausted, no key), `/spot` shape and stale flag, CORS, KV-only reads (mocked `fetch` and a fake KV).
-- **Build order:** (1) price honesty + the key pop-up (client only); (2) Worker skeleton + `/health`, deployed; (3) Yahoo-from-Cloudflare test, then `/spot` + cron with the budgeted GoldAPI backup;
-  (4) landing page reads `/spot`; (5) owner creates the KV namespace, sets the secret and approves the deploy; real fetch verified.
+- **Phases** (each is one branch and one PR; after each merge: pull `main`, delete the branch, confirm Cloudflare's build):
+
+  | Phase | What | Owner does | Done when |
+  |---|---|---|---|
+  | 3b.1 | Price honesty + one-time key pop-up (client only) | — | ✅ merged 2026-10-07 (PR #5) |
+  | 3b.2 | **Every date and time names its timezone** (client only; standing constraint 11) | — | every date or time on Markets, DCA, Vault and the price label names its zone; tests green; checked in a real browser with the browser set to a US timezone |
+  | 3b.3 | `workers/paun-api` skeleton: `GET /health`, CORS allow-list, own `wrangler.jsonc`, Vitest tests, a CI job | approves the first deploy; adds the second Worker to Cloudflare Git builds (root directory `workers/paun-api`) | `/health` answers on `paun-api.paun-gold.workers.dev` |
+  | 3b.4 | **Yahoo-from-Cloudflare test:** a temporary `GET /probe` in the deployed skeleton fetches GC=F once and reports status, price and latency; removed afterwards | approves the deploy | **Decision gate:** Yahoo answers, so it is the primary source; if it is blocked, GoldAPI-only within the budget (fewer refreshes, and the label says so) |
+  | 3b.5 | `/spot` + weekday cron (~15 min) + KV + budgeted GoldAPI backup (`MONTHLY_BUDGET` 90) | creates the KV namespace; runs `wrangler secret put GOLDAPI_KEY`; confirms GoldAPI's terms allow public display | mocked tests: Yahoo ok, Yahoo fails then GoldAPI, budget used up, no key; live `/spot` returns fresh JSON |
+  | 3b.6 | Landing page reads `/spot`: "live · 12 min ago (11:34 GMT+8) · Yahoo", falling back to the latest close with a note | — | real-browser check with the feed on and off |
+
+  The scanner (item 4) reuses the Worker from 3b.3, so its own build-order step (1) is already covered by then.
 - **Needs from the owner:** approval before any Cloudflare resource is created (KV namespace) or deployed; running `wrangler secret put GOLDAPI_KEY` themselves; confirming the GoldAPI terms allow showing
   the backup price publicly (their site could not be read automatically; with Yahoo as primary this matters only when the backup is used).
 
@@ -412,7 +426,7 @@ The `data` branch stays for the daily bot commits (keeps `main` history clean) �
 | 2a | Platform: leave Lovable + Cloudflare deploy + daily snapshot Action (see "Platform & deployment") | ✅ first Cloudflare auto-deploy confirmed (22:42 UTC, after the push to `main`); Lovable cleanup done in the housekeeping PR. 🟡 the first scheduled run DID fire (2026-10-07 01:41 UTC, about 3 h after the 22:30 slot: GitHub schedules run late) but FAILED at the publish step: the build left an untracked `market-snapshot.json` in the repo root, which blocks `git checkout data` once the data branch exists (the first, manual run only worked because the branch did not exist yet). Fixed on branch: the snapshot is built outside the repo and published by `.github/scripts/publish-snapshot.sh`, covered by 5 regression tests; to confirm after merge: run the workflow once by hand, then watch the next scheduled run |
 | **2c** *(new)* | **Safety net:** PR checks (tests + typecheck on every PR), tests for the app's money math (closes G8), Vault import fix (moved here from "Pending") | ✅ built on branch `chore/housekeeping` (PR pending review): CI workflow, 25 money-math tests, strict Vault import (checked end-to-end in a real browser: merge keeps existing items; broken file, non-list and duplicates all report correctly) |
 | 3 | 3C DCA Backtester (real 5-year history is already in the snapshot) | ✅ done 2026-10-07 (PR #3): engine `src/lib/dca.ts` with 23 hand-checked tests, page `/dca` (EN/BM) with a dock icon, checked in a real browser at desktop, 390 px and 360 px; live on the Worker |
-| **3b** *(new)* | **Live price**: shared near-live feed for the landing page (`paun-api /spot`, Yahoo + budgeted GoldAPI backup), a one-time "add your own key" pop-up inside the app, and **price honesty** (no invented trend, plain-language copy) | 🟡 spec rewritten 2026-10-07 (section 3B) for the 100-requests-a-month limit. **Step 1 built** (client only, checked in a real browser): invented trend removed, one-time key pop-up, plain-language price labels, honest placeholder. Next: Worker skeleton and the Yahoo-from-Cloudflare test; the scanner reuses the same Worker later |
+| **3b** *(new)* | **Live price**: shared near-live feed for the landing page (`paun-api /spot`, Yahoo + budgeted GoldAPI backup), a one-time "add your own key" pop-up inside the app, and **price honesty** (no invented trend, plain-language copy) | 🟡 spec rewritten 2026-10-07 (section 3B) for the 100-requests-a-month limit. Run as numbered phases 3b.1 to 3b.6 (table in section 3B): 3b.1 price honesty ✅ merged (PR #5); **3b.2 timezone labels in progress** (branch `feat/dates-with-timezone`); then the Worker skeleton, the Yahoo-from-Cloudflare test, `/spot`, and the landing page. The scanner reuses the same Worker later |
 | 4 | 3D Receipt/Hallmark Scanner — first use of `paun-api` (needs the owner's Gemini key and a Turnstile widget) | 🟡 spec approved 2026-10-07 (see section 3D); next up |
 | 5 | 2 Notifications + 3E Street rates on `paun-api` + Neon (needs the owner's Neon account) | |
 | **6** *(moved from 2b)* | ML-B pretrained-forecaster benchmark — research only, never ships | |
