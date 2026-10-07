@@ -27,19 +27,7 @@ jobs:
       - run: pip install -r ml/requirements.txt
       - name: Build snapshot
         working-directory: ml
-        run: python -m paun_ml.snapshot --models-dir ../public/models --out ../market-snapshot.json
+        # built OUTSIDE the repo folder so it can never collide with the tracked copy on the data branch
+        run: python -m paun_ml.snapshot --models-dir ../public/models --out "$RUNNER_TEMP/market-snapshot.json"
       - name: Publish to data branch
-        run: |
-          mkdir -p /tmp/out && cp market-snapshot.json /tmp/out/
-          git config user.name "paun-snapshot-bot"
-          git config user.email "paun-snapshot-bot@users.noreply.github.com"
-          if git ls-remote --exit-code --heads origin data >/dev/null 2>&1; then
-            git fetch origin data && git checkout -B data origin/data
-          else
-            git checkout --orphan data && git rm -rf . >/dev/null 2>&1 || true
-          fi
-          cp /tmp/out/market-snapshot.json .
-          git add market-snapshot.json
-          git diff --cached --quiet && echo "no change" && exit 0
-          git commit -m "snapshot $(date -u +%F)"
-          git push origin data
+        run: bash .github/scripts/publish-snapshot.sh "$RUNNER_TEMP/market-snapshot.json"
