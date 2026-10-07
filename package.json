@@ -13,6 +13,7 @@
     "dev:api": "wrangler dev -c workers/paun-api/wrangler.jsonc",
     "deploy:api": "wrangler deploy -c workers/paun-api/wrangler.jsonc",
     "typecheck:api": "tsc -p workers/paun-api",
+    "eval:scan": "bun workers/paun-api/eval/run.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run"
