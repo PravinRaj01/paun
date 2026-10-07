@@ -202,5 +202,12 @@
   "historyTz": "Tarikh ialah hari dagangan New York.",
   "priceCloseOf": "Penutup {{date}} ({{tz}}).",
   "priceFetchedAt": "Diambil {{when}}.",
-  "priceSetAt": "Ditetapkan {{when}}."
+  "priceSetAt": "Ditetapkan {{when}}.",
+  "spotFeedLive": "Langsung · {{ago}} · {{when}}",
+  "spotFeedClosed": "Pasaran tutup · harga terakhir {{when}}",
+  "spotFeedDelayed": "Suapan harga tertangguh · harga terakhir {{when}}",
+  "spotFeedSourceYahoo": "Niaga hadapan emas (GC=F) melalui Yahoo Finance",
+  "spotFeedSourceGoldapi": "Harga spot melalui GoldAPI",
+  "spotFeedClose": "Penutup harian terkini, {{date}} ({{tz}})",
+  "spotFeedPending": "Mengambil harga terkini…"
 }

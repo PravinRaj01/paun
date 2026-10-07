@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { formatCalendarDate, formatCalendarMs, formatMoment, localToday } from "./datetime";
+import { formatAgo, formatCalendarDate, formatCalendarMs, formatMoment, localToday } from "./datetime";
 
 describe("a calendar date is the same day for everyone", () => {
   it("never slips to the previous day, whatever timezone the viewer is in", () => {
@@ -44,6 +44,26 @@ describe("a moment shows its timezone", () => {
 
   it("is empty for an unreadable timestamp", () => {
     expect(formatMoment("", "en")).toBe("");
+  });
+});
+
+describe("formatAgo", () => {
+  const now = new Date("2026-10-07T16:40:00Z");
+  it.each([
+    ["2026-10-07T16:39:50Z", "now"],
+    ["2026-10-07T16:28:00Z", "12 minutes ago"],
+    ["2026-10-07T16:39:00Z", "1 minute ago"],
+    ["2026-10-07T13:40:00Z", "3 hours ago"],
+    ["2026-10-05T16:40:00Z", "2 days ago"],
+  ])("%s -> %s", (iso, text) => expect(formatAgo(iso, now, "en")).toBe(text));
+
+  it("never says 'in the future' for a timestamp slightly ahead of the viewer's clock", () => {
+    expect(formatAgo("2026-10-07T16:41:00Z", now, "en")).toBe("now");
+  });
+
+  it("speaks Bahasa Melayu and returns nothing for rubbish", () => {
+    expect(formatAgo("2026-10-07T16:28:00Z", now, "ms")).toContain("12 minit");
+    expect(formatAgo("nope", now, "en")).toBe("");
   });
 });
 

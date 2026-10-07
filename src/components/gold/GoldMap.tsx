@@ -99,8 +99,10 @@ function Odometer({ text }: { text: string }) {
   );
 }
 
-export function GoldMap() {
+/** `spotUsdOz` lets the landing page price the map from the shared live feed; everywhere else the app's own price is used. */
+export function GoldMap({ spotUsdOz }: { spotUsdOz?: number } = {}) {
   const { settings, setSettings, countries } = useGold();
+  const spot = spotUsdOz ?? settings.spotUsdOz;
   const basis = settings.priceBasis ?? "retail";
   const base = baseRateOf(settings, countries);
   const cur = settings.baseCurrency;
@@ -448,12 +450,12 @@ export function GoldMap() {
     } else if (d && performance.now() - d.t > 80) cam.current.vx = 0;
   };
 
-  const g = hover ? landedPerGram(hover.c, settings.spotUsdOz, basis, 0.916) : 0;
-  const g24 = hover ? landedPerGram(hover.c, settings.spotUsdOz, basis, 0.999) : 0;
+  const g = hover ? landedPerGram(hover.c, spot, basis, 0.916) : 0;
+  const g24 = hover ? landedPerGram(hover.c, spot, basis, 0.999) : 0;
 
   const ranked = useMemo(
-    () => countries.map((c) => ({ c, v: landedPerGram(c, settings.spotUsdOz, basis, 0.916) })).sort((a, b) => a.v - b.v),
-    [countries, settings.spotUsdOz, basis],
+    () => countries.map((c) => ({ c, v: landedPerGram(c, spot, basis, 0.916) })).sort((a, b) => a.v - b.v),
+    [countries, spot, basis],
   );
 
   const btn = "grid h-10 w-10 place-items-center rounded-full border bg-background/80 text-foreground shadow-sm backdrop-blur transition active:scale-95 hover:border-gold hover:text-gold sm:h-9 sm:w-9";
@@ -505,7 +507,7 @@ export function GoldMap() {
       {(() => {
         const pick = (selected && lookup(selected)) || (mine && lookup(mine)) || countries.find((c) => c.currency === cur) || ranked[0]?.c;
         if (!pick) return null;
-        const v = landedPerGram(pick, settings.spotUsdOz, basis, 0.916);
+        const v = landedPerGram(pick, spot, basis, 0.916);
         return (
           <div className="mt-8 overflow-hidden px-1 text-center sm:mt-10">
             <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:text-xs sm:tracking-[0.25em]">{pick.name} · 916 per gram · {basis === "retail" ? "shop price" : "raw metal"}</p>
@@ -515,7 +517,7 @@ export function GoldMap() {
             </p>
             <div className="num mx-auto mt-6 grid max-w-4xl grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border min-[420px]:grid-cols-3 lg:grid-cols-6">
               {PURITIES.filter((p) => ["999.9", "999", "916", "875", "750", "585"].includes(p.id)).map((p) => {
-                const pg = landedPerGram(pick, settings.spotUsdOz, basis, p.fineness / 1000);
+                const pg = landedPerGram(pick, spot, basis, p.fineness / 1000);
                 return (
                   <div key={p.id} className="bg-background px-3 py-3 text-left">
                     <div className="text-[11px] text-muted-foreground">{p.label}</div>

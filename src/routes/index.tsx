@@ -6,7 +6,10 @@ import { GoldMap } from "@/components/gold/GoldMap";
 import { Button } from "@/components/ui/button";
 import { useGold } from "@/lib/gold-store";
 import { fmt, GRAMS_PER_OUNCE } from "@/lib/gold";
+import { formatAgo, formatCalendarDate, formatMoment } from "@/lib/datetime";
+import { useSnapshot } from "@/lib/forecast/snapshot";
 import { useI18n } from "@/lib/i18n";
+import { chooseLandingSpot, feedStatus, useSpotFeed } from "@/lib/spot-feed";
 import { GoldGuide } from "@/components/gold/GoldGuide";
 
 export const Route = createFileRoute("/")({
@@ -34,6 +37,8 @@ type BIPEvent = Event & { prompt: () => Promise<void> };
 function Landing() {
   const { settings } = useGold();
   const { language, setLanguage, t } = useI18n();
+  const snap = useSnapshot();
+  const { feed, now } = useSpotFeed();
   const [install, setInstall] = useState<BIPEvent | null>(null);
   const [guide, setGuide] = useState(false);
   useEffect(() => {
@@ -44,7 +49,31 @@ function Landing() {
     window.addEventListener("beforeinstallprompt", h);
     return () => window.removeEventListener("beforeinstallprompt", h);
   }, []);
-  const perG = settings.spotUsdOz / GRAMS_PER_OUNCE;
+  // The landing page shows the shared near-live price when the feed answers; inside the app the price stays the latest close.
+  // A price the user set, or their own key's, always wins.
+  const spot = chooseLandingSpot(settings, feed);
+  const status = spot.kind === "feed" ? feedStatus(spot.feed, now) : null;
+  const perG = spot.usdOz / GRAMS_PER_OUNCE;
+  const spotLine = (() => {
+    if (spot.kind === "feed") {
+      const struck = spot.feed.marketTime ?? spot.feed.fetchedAt;
+      const when = formatMoment(struck, language); // the viewer's own timezone, named
+      const head =
+        status === "live" ? t("spotFeedLive", { ago: formatAgo(struck, now, language), when })
+        : status === "closed" ? t("spotFeedClosed", { when })
+        : t("spotFeedDelayed", { when });
+      return `${head} · ${spot.feed.provider === "yahoo" ? t("spotFeedSourceYahoo") : t("spotFeedSourceGoldapi")}`;
+    }
+    if (spot.kind === "close" && snap.status === "ready")
+      return t("spotFeedClose", { date: formatCalendarDate(snap.snapshot.asOf, language), tz: t("tzTradingDay") });
+    if (spot.kind === "pending") return t("spotFeedPending");
+    return null; // the user's own price needs no explanation here
+  })();
+  const priceWord =
+    spot.kind === "yours" ? (settings.source === "live" ? t("live") : t("your"))
+    : spot.kind === "feed" ? (status === "live" ? t("live") : t("closeWord"))
+    : spot.kind === "close" ? t("closeWord")
+    : "…";
   const features = language === "ms" ? [
     { icon: Globe2, title: "Senarai negara", body: "Pantau pasaran dengan mata wang, kadar tukaran, duti import dan cukai sendiri." },
     { icon: Scale, title: "Kalkulator emas", body: "Masukkan berat, ketulenan, upah dan kos lebur untuk melihat nilai emas bersih." },
@@ -78,7 +107,8 @@ function Landing() {
       </header>
 
       <section className="mx-auto max-w-6xl px-4 pb-14 pt-10 sm:px-6 sm:pb-16 md:pt-20">
-        <p className="num text-xs uppercase tracking-[0.2em] text-gold">{t("homeEyebrow")} · {fmt(settings.spotUsdOz, "USD")} / oz</p>
+        <p className="num text-xs uppercase tracking-[0.2em] text-gold">{t("homeEyebrow")} · {spot.kind === "pending" ? "…" : fmt(spot.usdOz, "USD")} / oz</p>
+        {spotLine && <p className="num mt-2 text-[11px] text-muted-foreground">{spotLine}</p>}
         <h1 className="mt-5 max-w-4xl font-display text-4xl leading-[1.08] sm:text-5xl md:text-7xl">
           {t("homeTitleA")} <em className="text-gold">{t("homeTitleB")}</em> {t("homeTitleC")}
         </h1>
@@ -98,9 +128,9 @@ function Landing() {
       <section className="mx-auto -mt-5 max-w-6xl overflow-hidden px-4 pb-16 sm:-mt-8 sm:px-6 sm:pb-20">
         <div className="grid gap-1 sm:flex sm:flex-wrap sm:items-end sm:justify-between sm:gap-2">
           <p className="text-xs uppercase tracking-[0.2em] text-gold">{t("worldGold")}</p>
-          <p className="num text-xs text-muted-foreground">{t("basedOn")} {settings.source === "live" ? t("live") : settings.source === "market" ? t("closeWord") : t("your")} · {(settings.priceBasis ?? "retail") === "retail" ? t("shopPrice") : t("rawSpot")}</p>
+          <p className="num text-xs text-muted-foreground">{t("basedOn")} {priceWord} · {(settings.priceBasis ?? "retail") === "retail" ? t("shopPrice") : t("rawSpot")}</p>
         </div>
-        <GoldMap />
+        <GoldMap spotUsdOz={spot.usdOz} />
       </section>
 
       <section className="mx-auto grid max-w-6xl gap-px overflow-hidden px-4 py-14 sm:px-6 sm:py-20 md:grid-cols-2">
