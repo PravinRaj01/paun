@@ -9,6 +9,18 @@
   // Pinned on purpose, like the web Worker: bump it deliberately after testing.
   "compatibility_date": "2026-10-06",
 
+  // Refresh the shared gold price every 15 minutes, Monday to Friday (UTC). Gold futures trade from Sunday evening to Friday
+  // evening, so this covers the market; at weekends the last price simply stays. Triggers run on UTC.
+  "triggers": { "crons": ["*/15 * * * 1-5"] },
+
+  // The latest price and the GoldAPI call counters. No id on purpose: Wrangler creates the namespace on the first deploy
+  // (and says so), so there is no id to copy around. It holds no secret.
+  "kv_namespaces": [{ "binding": "SPOT" }],
+
+  // The owner's GoldAPI plan allows 100 calls a month. These caps are enforced in code (src/budget.ts), never exceeded.
+  // The key itself is a secret: `bunx wrangler secret put GOLDAPI_KEY -c workers/paun-api/wrangler.jsonc`.
+  "vars": { "MONTHLY_BUDGET": "90", "DAILY_BUDGET": "3" },
+
   // Logs show status codes and timings only; nothing here logs a request body (the scanner's photos must never be logged).
   "observability": {
     "logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": true, "persist": true },

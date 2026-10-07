@@ -3,10 +3,9 @@
  * CORS headers, so the browser refuses to hand it to the page. (The Worker holds no secret a GET could leak; the
  * allow-list keeps other sites from building on our endpoints and, later, from spending our quotas through a visitor's browser.)
  */
-export type Env = {
-  /** Comma-separated extra origins, e.g. a custom domain added later: "https://paun.example". Plain variable, no secret. */
-  EXTRA_ORIGINS?: string;
-};
+import type { Env as FullEnv } from "./env";
+
+type Env = Pick<FullEnv, "EXTRA_ORIGINS">;
 
 const WEB_ORIGIN = "https://paun-web.paun-gold.workers.dev";
 // Cloudflare names a branch preview "<branch>-paun-web.<subdomain>.workers.dev"
