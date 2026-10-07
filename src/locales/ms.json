@@ -99,7 +99,7 @@
   "addToVault": "Simpan ke peti",
   "added": "Ditambah ke peti anda",
   "vaultTitle": "Peti simpanan peribadi",
-  "vaultHint": "Emas anda, dinilai secara langsung. Disimpan dalam peranti ini sahaja.",
+  "vaultHint": "Emas anda, dinilai pada harga terkini. Disimpan dalam peranti ini sahaja.",
   "itemName": "Barang",
   "paidPrice": "Harga dibayar",
   "boughtOn": "Tarikh beli",
@@ -185,5 +185,17 @@
   "dcaNoData": "Sejarah harga tidak mencukupi untuk menjalankan pelan ini.",
   "dcaLoading": "Memuatkan sejarah harga…",
   "dcaUnavailable": "Sejarah harga tidak dapat dimuatkan. Semak sambungan anda dan cuba lagi.",
-  "dcaNoteHistorical": "Jumlah ringgit menggunakan kadar pasaran USD/MYR pada setiap tarikh pembelian (terkini {{rate}}). Kadar dalam senarai pantau anda mungkin berbeza, jadi nilai hari ini di sini mungkin tidak sama dengan halaman lain."
+  "dcaNoteHistorical": "Jumlah ringgit menggunakan kadar pasaran USD/MYR pada setiap tarikh pembelian (terkini {{rate}}). Kadar dalam senarai pantau anda mungkin berbeza, jadi nilai hari ini di sini mungkin tidak sama dengan halaman lain.",
+  "livePromptTitle": "Mahu harga emas langsung?",
+  "livePromptBody": "Secara lalai Paun menunjukkan harga penutup harian terkini bagi emas. Untuk harga langsung, tambah kunci GoldAPI percuma anda sendiri (goldapi.io, 100 permintaan percuma sebulan). Kunci kekal dalam pelayar ini.",
+  "livePromptAdd": "Tambah kunci GoldAPI saya",
+  "livePromptSkip": "Teruskan dengan penutup terkini",
+  "keyHint": "Secara lalai Paun menunjukkan harga penutup harian terkini bagi emas. Untuk harga langsung, tampal kunci GoldAPI percuma anda (goldapi.io, 100 permintaan percuma sebulan). Permintaan terus dari pelayar anda dan kunci kekal di sini.",
+  "priceTipMarket": "Harga penutup harian terkini niaga hadapan emas. Tambah kunci GoldAPI dalam Tetapan untuk harga langsung.",
+  "priceTipLive": "Harga langsung yang diambil dengan kunci GoldAPI anda.",
+  "priceTipManual": "Harga yang anda masukkan dalam Tetapan.",
+  "placeholderWord": "sementara",
+  "priceTipPlaceholder": "Tiada sumber harga dapat dicapai lagi, jadi ini harga sementara. Tetapkan harga dalam Tetapan atau semak sambungan anda.",
+  "chartLoading": "Memuatkan sejarah harga…",
+  "chartUnavailable": "Sejarah harga tidak tersedia buat masa ini. Semak sambungan anda dan cuba lagi."
 }

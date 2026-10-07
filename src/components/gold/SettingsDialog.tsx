@@ -112,7 +112,7 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
             <Label htmlFor="key">{t("apiKey")}</Label>
             <Input id="key" type="password" placeholder="goldapi-xxxx" value={key} onChange={(e) => setKey(e.target.value)} />
             <p className="text-xs text-muted-foreground">
-              Free key at goldapi.io. Requests go straight from your browser.
+              {t("keyHint")}
             </p>
             <Button variant="outline" size="sm" onClick={fetchLive} disabled={loading} className="w-full">
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RadioTower className="h-4 w-4" />}

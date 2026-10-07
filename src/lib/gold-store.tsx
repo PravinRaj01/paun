@@ -29,7 +29,7 @@ function usePersisted<T>(key: string, initial: T) {
   useEffect(() => {
     if (loaded) localStorage.setItem(K + key, JSON.stringify(value));
   }, [key, value, loaded]);
-  return [value, setValue] as const;
+  return [value, setValue, loaded] as const;
 }
 
 type Store = {
@@ -43,6 +43,8 @@ type Store = {
   setExcluded: (e: string[] | ((p: string[]) => string[])) => void;
   vault: VaultItem[];
   setVault: (v: VaultItem[] | ((p: VaultItem[]) => VaultItem[])) => void;
+  hydrated: boolean; // saved settings have been read from this browser (before that, defaults are shown)
+  priceUnavailable: boolean; // neither the live file nor the bundled copy of the price data could be loaded
   theme: "dark" | "light";
   toggleTheme: () => void;
   resetAll: () => void;
@@ -53,7 +55,8 @@ const g = globalThis as { __paunGoldCtx?: React.Context<Store | null> };
 const Ctx = (g.__paunGoldCtx ??= createContext<Store | null>(null));
 
 export function GoldProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = usePersisted("settings", DEFAULT_SETTINGS);
+  const [settings, setSettings, hydrated] = usePersisted("settings", DEFAULT_SETTINGS);
+  const [priceUnavailable, setPriceUnavailable] = useState(false);
   const [countries, setCountries] = usePersisted<Country[]>("countries", DEFAULT_COUNTRIES);
   const [trade, setTrade] = usePersisted("trade", DEFAULT_TRADE);
   const [excluded, setExcluded] = usePersisted<string[]>("excluded", []);
@@ -78,6 +81,7 @@ export function GoldProvider({ children }: { children: ReactNode }) {
     getSnapshot().then(
       ({ snapshot }) => {
         if (!alive) return;
+        setPriceUnavailable(false);
         const close = snapshot.spotXauUsd;
         setSettings((s) =>
           (s.source === "market" || hasDefaultSpot(s)) && s.spotUsdOz !== close
@@ -85,7 +89,7 @@ export function GoldProvider({ children }: { children: ReactNode }) {
             : s,
         );
       },
-      () => {}, // offline or blocked: keep whatever the user has
+      () => alive && setPriceUnavailable(true), // offline or blocked: keep whatever the user has, and say so
     );
     return () => {
       alive = false;
@@ -108,7 +112,7 @@ export function GoldProvider({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider
-      value={{ settings, setSettings, countries, setCountries, trade, setTrade, excluded, setExcluded, vault, setVault, theme, toggleTheme, resetAll }}
+      value={{ settings, setSettings, countries, setCountries, trade, setTrade, excluded, setExcluded, vault, setVault, hydrated, priceUnavailable, theme, toggleTheme, resetAll }}
     >
       {children}
     </Ctx.Provider>

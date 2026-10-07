@@ -5,14 +5,18 @@ import { Logo } from "./Logo";
 import { ThemeRipple } from "./ThemeRipple";
 import { Button } from "@/components/ui/button";
 import { useGold } from "@/lib/gold-store";
-import { baseRateOf, fmt, GRAMS_PER_OUNCE } from "@/lib/gold";
+import { baseRateOf, fmt, GRAMS_PER_OUNCE, hasDefaultSpot } from "@/lib/gold";
 import { useI18n } from "@/lib/i18n";
 
 export function SpotBar(_: { onSettings: () => void }) {
-  const { settings, countries, theme, toggleTheme } = useGold();
+  const { settings, countries, theme, toggleTheme, priceUnavailable } = useGold();
   const { t } = useI18n();
   const [ripple, setRipple] = useState<{ id: number; x: number; y: number } | null>(null);
   const base = baseRateOf(settings, countries);
+  // what the price is, in words; a never-replaced default (the old $2,650) is called a placeholder, but only once loading has failed
+  const placeholder = priceUnavailable && hasDefaultSpot(settings);
+  const label = placeholder ? t("placeholderWord") : settings.source === "market" ? t("closeWord") : settings.source;
+  const tip = placeholder ? t("priceTipPlaceholder") : settings.source === "market" ? t("priceTipMarket") : settings.source === "live" ? t("priceTipLive") : t("priceTipManual");
   const cur = settings.baseCurrency;
 
   const clearRipple = useCallback(() => setRipple(null), []);
@@ -52,7 +56,7 @@ export function SpotBar(_: { onSettings: () => void }) {
                <div className="num whitespace-nowrap text-xs text-gold sm:text-sm">{fmt(settings.spotUsdOz * base, cur, settings.decimals)}<span className="text-muted-foreground">/oz</span></div>
               <div className="num text-[11px] text-muted-foreground">
                 {fmt((settings.spotUsdOz / GRAMS_PER_OUNCE) * base, cur, settings.decimals)}/g ·{" "}
-                <span className={settings.source === "live" ? "text-success" : ""}>{settings.source === "market" ? t("closeWord") : settings.source}</span>
+                <span className={settings.source === "live" ? "text-success" : ""} title={tip}>{label}</span>
               </div>
             </div>
             <Button variant="ghost" size="icon" onClick={changeTheme} aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}>
