@@ -39,3 +39,6 @@ ml/.venv/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+
+# Sample receipts for testing the scanner: personal details of real people, never commit (kept on the owner's disk only)
+receipts-ref/
