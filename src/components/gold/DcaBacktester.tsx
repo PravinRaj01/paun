@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { formatCalendarDate, formatCalendarMs } from "@/lib/datetime";
 import { backtestDca, type DcaContribution, type DcaResult } from "@/lib/dca";
 import { useSnapshot } from "@/lib/forecast/snapshot";
 import { baseRateOf, fmt, PURITIES, type PurityId } from "@/lib/gold";
@@ -243,7 +244,7 @@ function Results({
   countryName: string;
   perMonth: string;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const goldNow = r.valueSellBackBase;
   const profit = r.profitSellBackBase;
   const gap = r.goldVsSavingsBase;
@@ -303,9 +304,7 @@ function Results({
                 scale="time"
                 domain={["dataMin", "dataMax"]}
                 minTickGap={40}
-                tickFormatter={(v: number) =>
-                  new Date(v).toLocaleDateString([], { month: "short", year: "2-digit" })
-                }
+                tickFormatter={(v: number) => formatCalendarMs(v, language, "month")}
                 tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
@@ -320,7 +319,9 @@ function Results({
               />
               <Tooltip
                 contentStyle={tooltipStyle}
-                labelFormatter={(v: number) => new Date(v).toLocaleDateString()}
+                labelFormatter={(v: number) =>
+                  `${formatCalendarMs(v, language, "weekday")} · ${t("tzTradingDay")}`
+                }
                 formatter={(v: number, name: string) => [money(v), name]}
               />
               <Legend wrapperStyle={{ fontSize: 12 }} />
@@ -371,7 +372,7 @@ function Results({
             <tbody>
               {r.purchases.map((p) => (
                 <tr key={p.date} className="border-t">
-                  <td className="py-1 pr-3">{p.date}</td>
+                  <td className="py-1 pr-3">{formatCalendarDate(p.date, language)}</td>
                   <td className="py-1 pr-3 text-right">{money(p.costBase / p.grams)}</td>
                   <td className="py-1 pr-3 text-right">{p.grams.toFixed(3)}</td>
                   <td className="py-1 text-right">{money(p.costBase)}</td>
@@ -387,11 +388,20 @@ function Results({
         {r.fxMode === "historical" && <p>{t("dcaNoteHistorical", { rate: r.fxEnd.toFixed(4) })}</p>}
         {r.clamped && (
           <p>
-            {t("dcaNoteClamped", { n: r.purchaseCount, m: r.requestedMonths, date: r.firstDate })}
+            {t("dcaNoteClamped", {
+              n: r.purchaseCount,
+              m: r.requestedMonths,
+              date: formatCalendarDate(r.firstDate, language),
+            })}
           </p>
         )}
         <p>{basisIsShop ? t("dcaNoteShop", { country: countryName }) : t("dcaNoteRaw")}</p>
-        <p>{t("dcaDisclaimer", { from: r.firstDate, to: r.endDate })}</p>
+        <p>
+          {t("dcaDisclaimer", {
+            from: formatCalendarDate(r.firstDate, language),
+            to: formatCalendarDate(r.endDate, language),
+          })}
+        </p>
       </div>
     </>
   );

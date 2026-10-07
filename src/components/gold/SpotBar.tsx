@@ -6,17 +6,29 @@ import { ThemeRipple } from "./ThemeRipple";
 import { Button } from "@/components/ui/button";
 import { useGold } from "@/lib/gold-store";
 import { baseRateOf, fmt, GRAMS_PER_OUNCE, hasDefaultSpot } from "@/lib/gold";
+import { formatCalendarDate, formatMoment } from "@/lib/datetime";
+import { useSnapshot } from "@/lib/forecast/snapshot";
 import { useI18n } from "@/lib/i18n";
 
 export function SpotBar(_: { onSettings: () => void }) {
   const { settings, countries, theme, toggleTheme, priceUnavailable } = useGold();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const snap = useSnapshot();
   const [ripple, setRipple] = useState<{ id: number; x: number; y: number } | null>(null);
   const base = baseRateOf(settings, countries);
   // what the price is, in words; a never-replaced default (the old $2,650) is called a placeholder, but only once loading has failed
   const placeholder = priceUnavailable && hasDefaultSpot(settings);
   const label = placeholder ? t("placeholderWord") : settings.source === "market" ? t("closeWord") : settings.source;
-  const tip = placeholder ? t("priceTipPlaceholder") : settings.source === "market" ? t("priceTipMarket") : settings.source === "live" ? t("priceTipLive") : t("priceTipManual");
+  // when the price is from: a market close is a New York trading day; live and manual prices are moments, shown in the viewer's own timezone
+  const closeOf = snap.status === "ready" ? ` ${t("priceCloseOf", { date: formatCalendarDate(snap.snapshot.asOf, language), tz: t("tzTradingDay") })}` : "";
+  const moment = settings.updatedAt ? formatMoment(settings.updatedAt, language) : "";
+  const tip = placeholder
+    ? t("priceTipPlaceholder")
+    : settings.source === "market"
+      ? `${t("priceTipMarket")}${closeOf}`
+      : settings.source === "live"
+        ? `${t("priceTipLive")}${moment ? ` ${t("priceFetchedAt", { when: moment })}` : ""}`
+        : `${t("priceTipManual")}${moment ? ` ${t("priceSetAt", { when: moment })}` : ""}`;
   const cur = settings.baseCurrency;
 
   const clearRipple = useCallback(() => setRipple(null), []);

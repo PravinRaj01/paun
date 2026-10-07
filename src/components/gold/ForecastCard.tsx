@@ -3,6 +3,7 @@ import { useGold } from "@/lib/gold-store";
 import { baseRateOf, fmt, GRAMS_PER_OUNCE } from "@/lib/gold";
 import { buildForecast } from "@/lib/forecast/forecast";
 import { useSnapshot } from "@/lib/forecast/snapshot";
+import { formatCalendarDate } from "@/lib/datetime";
 import { useI18n } from "@/lib/i18n";
 
 /**
@@ -14,7 +15,7 @@ import { useI18n } from "@/lib/i18n";
  */
 export function ForecastCard() {
   const { settings, setSettings, countries } = useGold();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const state = useSnapshot();
   const [unit, setUnit] = useState<"g" | "oz">("g");
   const base = baseRateOf(settings, countries);
@@ -152,7 +153,8 @@ export function ForecastCard() {
       <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
         <span>
           {t("forecastNow")}: <span className="num text-foreground">{price(spot)}</span> ·{" "}
-          {t("forecastAsOf")} <span className="num">{forecast.asOf}</span>
+          {t("forecastAsOf")}{" "}
+          <span className="num">{formatCalendarDate(forecast.asOf, language)}</span> ({t("tzTradingDay")})
         </span>
         {forecast.stale && (
           <span className="rounded-full border border-destructive/50 px-1.5 py-px text-destructive">
