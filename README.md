@@ -57,7 +57,8 @@ Pushes to `main` are built and deployed by Cloudflare automatically. See [`docs/
 | `src/lib/gold-store.tsx` | App state (React context + LocalStorage) |
 | `src/locales/` | UI copy, `en.json` and `ms.json` |
 | `ml/` | Python training, evaluation and the daily snapshot job |
-| `wrangler.jsonc` | Cloudflare Worker config |
+| `workers/paun-api/` | Backend Worker (own config and deploys): `/health` now; live price and receipt scanner later |
+| `wrangler.jsonc` | Cloudflare Worker config for the web app |
 | `PLAN.md` | Roadmap, decisions and status — the single source of truth |
 | `AGENTS.md` | Rules for contributors and coding agents |
 
