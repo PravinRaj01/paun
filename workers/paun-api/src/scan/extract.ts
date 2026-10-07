@@ -13,12 +13,13 @@ Fields:
 - item_name: the item description as printed (for example "Rantai tangan 916"), or null.
 - purity: the stamp or fineness exactly as printed, for example "916", "999.9", "750", "22K", or null.
 - weight_grams: the weight in grams as a number. Only if the weight is printed in grams; null if it is in another unit (for example mayam or paun) or not shown.
-- making_fee_amount: the workmanship / making charge (upah, "labour", "making") as a number, or null.
+- making_fee_amount: the workmanship / making charge (upah, "labour", "making", "W'SHIP") as a number, or null. A price premium over the metal value, a bar or coin premium, transport, tax or handling is NOT a making fee: answer null for those.
 - making_fee_per: "gram" if that fee is per gram, "total" if it is for the whole item, or null if unclear.
 - purchase_date: the purchase date as YYYY-MM-DD, or null. Day-first dates (DD/MM/YYYY) are normal here.
 - total_paid: the final total paid as a number, or null.
 - currency: the 3-letter currency code of the total (RM means MYR), or null.
 - confidence: "high" if every field you filled is clearly legible, "medium" if some are hard to read, "low" if you are unsure about several.
+If the document lists several different items, read the first item for item_name, purity, weight_grams and the making fee, give the grand total if one is shown, and set confidence to at most "medium".
 Answer with the JSON object only.`;
 
 /** JSON Schema for Gemini's structured output (nullable = a type array). The sanitiser below does not trust it either. */
