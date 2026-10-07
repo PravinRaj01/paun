@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useGold } from "@/lib/gold-store";
 import { analyze, baseRateOf, fmt, normPurity, PURITIES, sellQuote, type PurityId } from "@/lib/gold";
+import { localToday } from "@/lib/datetime";
 import { useI18n } from "@/lib/i18n";
 
 export function SellAnalyzer() {
@@ -93,7 +94,7 @@ export function AddToVault() {
     const paid = trade.askingPrice > 0 ? trade.askingPrice : analyze(trade, country, settings.spotUsdOz, settings.priceBasis ?? "retail").totalUsd;
     setVault((v) => [...v, {
       id: crypto.randomUUID(), name: `${trade.weight} g ${normPurity(trade.purity)}`, weight: trade.weight,
-      purity: normPurity(trade.purity), paidUsd: paid, date: new Date().toISOString().slice(0, 10),
+      purity: normPurity(trade.purity), paidUsd: paid, date: localToday(),
     }]);
     setDone(true);
   };

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Download, Trash2, Upload } from "lucide-react";
 import { AppShell } from "@/components/gold/AppShell";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useGold } from "@/lib/gold-store";
 import { baseRateOf, fineOf, fmt, GRAMS_PER_OUNCE, PURITIES, sellQuote, DEFAULT_TRADE, type PurityId, type VaultItem } from "@/lib/gold";
+import { formatCalendarDate, localToday } from "@/lib/datetime";
 import { useI18n, type CopyKey } from "@/lib/i18n";
 import { parseVaultImport, type SkipReason } from "@/lib/vault-import";
 import { toast } from "sonner";
@@ -38,14 +39,16 @@ export const Route = createFileRoute("/vault")({
 
 function VaultPage() {
   const { vault, setVault, settings, countries, setTrade } = useGold();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const nav = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
   const base = baseRateOf(settings, countries);
   const cur = settings.baseCurrency;
   const money = (n: number) => fmt(n * base, cur, settings.decimals);
   const spotG = settings.spotUsdOz / GRAMS_PER_OUNCE;
-  const [form, setForm] = useState({ name: "", weight: "", purity: "916" as PurityId, paid: "", date: new Date().toISOString().slice(0, 10) });
+  const [form, setForm] = useState({ name: "", weight: "", purity: "916" as PurityId, paid: "", date: "" });
+  // the date field starts as the viewer's local today; set after mount because the server (UTC) and the browser can disagree on the date
+  useEffect(() => setForm((f) => (f.date ? f : { ...f, date: localToday() })), []);
 
   const rows = vault.map((it) => {
     const value = it.weight * fineOf(it.purity) * spotG;
@@ -128,7 +131,7 @@ function VaultPage() {
             <div key={it.id} className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-4">
               <div className="min-w-0 flex-1">
                 <div className="truncate font-medium">{it.name}</div>
-                <div className="num text-xs text-muted-foreground">{it.weight} g · {it.purity} · {it.date} · {t("paidPrice")} {money(it.paidUsd)}</div>
+                <div className="num text-xs text-muted-foreground">{it.weight} g · {it.purity} · {formatCalendarDate(it.date, language)} ·{t("paidPrice")} {money(it.paidUsd)}</div>
               </div>
               <div className="text-right">
                 <div className="num text-sm">{money(value)} <span className="text-xs text-muted-foreground">/ {money(sell)}</span></div>

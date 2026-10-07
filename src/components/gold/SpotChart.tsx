@@ -3,6 +3,7 @@ import { Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Too
 import { useGold } from "@/lib/gold-store";
 import { baseRateOf, BASIS_LABEL, fineOf, fmt, GRAMS_PER_OUNCE, premiumOf, PURITIES, type PurityId } from "@/lib/gold";
 import { useSnapshot } from "@/lib/forecast/snapshot";
+import { formatCalendarDate, formatCalendarMs } from "@/lib/datetime";
 import { useI18n } from "@/lib/i18n";
 
 // Real daily closes, so there is no intraday (1D) view. Sessions per range; ~252 trading days a year.
@@ -12,7 +13,7 @@ const SESSIONS: Record<HistRange, number> = { "1W": 5, "1M": 22, "1Y": 252, "5Y"
 
 export function SpotChart() {
   const { settings, setSettings, countries } = useGold();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const snap = useSnapshot();
   const [range, setRange] = useState<HistRange>("1M");
   const [unit, setUnit] = useState<"oz" | "g">("g");
@@ -50,11 +51,9 @@ export function SpotChart() {
   const hi = Math.max(...data.map((d) => d.v)), lo = Math.min(...data.map((d) => d.v));
   const chg = last - first, pct = (chg / first) * 100, up = chg >= 0;
   const color = up ? "var(--success)" : "var(--destructive)";
-  const tick = (t: number) => {
-    const d = new Date(t);
-    return range === "5Y" ? d.toLocaleDateString([], { year: "numeric", month: "short" })
-      : range === "1Y" ? d.toLocaleDateString([], { month: "short" }) : d.toLocaleDateString([], { day: "numeric", month: "short" });
-  };
+  // the x values are trading days stored as UTC midnight; formatCalendarMs reads them back as the same calendar day for everyone
+  const tick = (t: number) => formatCalendarMs(t, language, range === "5Y" || range === "1Y" ? "month" : "short");
+  const tzDay = t("tzTradingDay");
   const f = (n: number) => fmt(n, cur, settings.decimals);
   const local = basis === "retail" && country && country.currency !== cur ? (n: number) => fmt((n / base) * country.rate, country.currency, settings.decimals) : null;
   const seg = (on: boolean) => `whitespace-nowrap rounded px-2 py-1 ${on ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`;
@@ -106,7 +105,7 @@ export function SpotChart() {
             <Tooltip
               cursor={{ stroke: "var(--muted-foreground)", strokeDasharray: "3 3" }}
               contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--popover-foreground)" }}
-              labelFormatter={(t: number) => new Date(t).toLocaleString()}
+              labelFormatter={(t: number) => `${formatCalendarMs(t, language, "weekday")} · ${tzDay}`}
               formatter={(v: number) => [local ? `${f(v)} (${local(v)})` : f(v), "Price"]}
             />
             <Area type="monotone" dataKey="v" stroke={color} strokeWidth={2} fill="url(#spotFill)" activeDot={{ r: 4 }} />
@@ -119,7 +118,7 @@ export function SpotChart() {
         <div>Low <span className="text-foreground">{f(lo)}</span></div>
       </div>
       <p className="mt-2 text-[11px] text-muted-foreground">
-        {`${t("historyNote")} ${real.asOf}. ${basis === "retail" ? t("historyMarkup") : ""}`}
+        {`${t("historyNote")} ${formatCalendarDate(real.asOf, language)}. ${t("historyTz")} ${basis === "retail" ? t("historyMarkup") : ""}`}
       </p>
     </section>
   );

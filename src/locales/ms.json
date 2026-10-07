@@ -102,7 +102,7 @@
   "vaultHint": "Emas anda, dinilai pada harga terkini. Disimpan dalam peranti ini sahaja.",
   "itemName": "Barang",
   "paidPrice": "Harga dibayar",
-  "boughtOn": "Tarikh beli",
+  "boughtOn": "Tarikh beli (tarikh tempatan anda)",
   "currentValue": "Nilai emas kini",
   "sellValue": "Anggaran jualan",
   "profitLoss": "Untung / rugi",
@@ -171,7 +171,7 @@
   "dcaSeriesGold": "Nilai emas",
   "dcaSeriesSavings": "Simpanan",
   "dcaPurchases": "Tunjuk setiap pembelian",
-  "dcaColDate": "Tarikh",
+  "dcaColDate": "Tarikh (hari dagangan New York)",
   "dcaColPrice": "Harga / g",
   "dcaColGrams": "Gram",
   "dcaColCost": "Kos",
@@ -179,7 +179,7 @@
   "dcaNoteClamped": "Hanya {{n}} daripada {{m}} pembelian bulanan muat dalam sejarah harga (bermula {{date}}).",
   "dcaNoteShop": "Harga termasuk margin kedai, duti dan cukai untuk {{country}}; nilai jika dijual hari ini ditolak susut yang biasa.",
   "dcaNoteRaw": "Harga ialah harga emas mentah tanpa margin kedai. Tukar kepada Harga kedai dalam pilihan paparan untuk pembelian kedai yang lebih realistik.",
-  "dcaDisclaimer": "Ulangan masa lalu, bukan ramalan. Tempoh ini termasuk kenaikan harga emas yang besar. Harga ialah penutup harian niaga hadapan emas dari {{from}} hingga {{to}}.",
+  "dcaDisclaimer": "Ulangan masa lalu, bukan ramalan. Tempoh ini termasuk kenaikan harga emas yang besar. Harga ialah penutup harian niaga hadapan emas dari {{from}} hingga {{to}} (hari dagangan New York).",
   "dcaInvalidAmount": "Masukkan jumlah melebihi sifar.",
   "dcaInvalidRate": "Masukkan kadar simpanan melebihi -100%.",
   "dcaNoData": "Sejarah harga tidak mencukupi untuk menjalankan pelan ini.",
@@ -197,5 +197,10 @@
   "placeholderWord": "sementara",
   "priceTipPlaceholder": "Tiada sumber harga dapat dicapai lagi, jadi ini harga sementara. Tetapkan harga dalam Tetapan atau semak sambungan anda.",
   "chartLoading": "Memuatkan sejarah harga…",
-  "chartUnavailable": "Sejarah harga tidak tersedia buat masa ini. Semak sambungan anda dan cuba lagi."
+  "chartUnavailable": "Sejarah harga tidak tersedia buat masa ini. Semak sambungan anda dan cuba lagi.",
+  "tzTradingDay": "hari dagangan New York",
+  "historyTz": "Tarikh ialah hari dagangan New York.",
+  "priceCloseOf": "Penutup {{date}} ({{tz}}).",
+  "priceFetchedAt": "Diambil {{when}}.",
+  "priceSetAt": "Ditetapkan {{when}}."
 }

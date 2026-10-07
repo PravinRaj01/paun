@@ -102,7 +102,7 @@
   "vaultHint": "Your gold, valued at the latest price. Saved on this device only.",
   "itemName": "Item",
   "paidPrice": "Price paid",
-  "boughtOn": "Bought on",
+  "boughtOn": "Bought on (your local date)",
   "currentValue": "Gold value now",
   "sellValue": "Est. sell payout",
   "profitLoss": "Profit / loss",
@@ -171,7 +171,7 @@
   "dcaSeriesGold": "Gold value",
   "dcaSeriesSavings": "Savings",
   "dcaPurchases": "Show every purchase",
-  "dcaColDate": "Date",
+  "dcaColDate": "Date (New York trading day)",
   "dcaColPrice": "Price / g",
   "dcaColGrams": "Grams",
   "dcaColCost": "Cost",
@@ -179,7 +179,7 @@
   "dcaNoteClamped": "Only {{n}} of {{m}} monthly purchases fit the price history (it starts {{date}}).",
   "dcaNoteShop": "Prices include shop mark-up, duty and tax for {{country}}; the sold-today value takes off the usual deduction (susut).",
   "dcaNoteRaw": "Prices are raw gold prices with no shop mark-up. Switch to Shop price in view options for a more realistic shop purchase.",
-  "dcaDisclaimer": "A replay of the past, not a forecast. This period includes a large gold rally. Prices are daily closes of gold futures from {{from}} to {{to}}.",
+  "dcaDisclaimer": "A replay of the past, not a forecast. This period includes a large gold rally. Prices are daily closes of gold futures from {{from}} to {{to}} (New York trading days).",
   "dcaInvalidAmount": "Enter an amount above zero.",
   "dcaInvalidRate": "Enter a savings rate above -100%.",
   "dcaNoData": "Not enough price history to run this plan.",
@@ -197,5 +197,10 @@
   "placeholderWord": "placeholder",
   "priceTipPlaceholder": "No price source could be reached yet, so this is a placeholder. Set a price in Settings or check your connection.",
   "chartLoading": "Loading price history…",
-  "chartUnavailable": "Price history is unavailable right now. Check your connection and try again."
+  "chartUnavailable": "Price history is unavailable right now. Check your connection and try again.",
+  "tzTradingDay": "New York trading day",
+  "historyTz": "Dates are New York trading days.",
+  "priceCloseOf": "Close of {{date}} ({{tz}}).",
+  "priceFetchedAt": "Fetched {{when}}.",
+  "priceSetAt": "Set {{when}}."
 }
