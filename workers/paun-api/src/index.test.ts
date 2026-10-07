@@ -68,6 +68,6 @@ describe("CORS allow-list", () => {
     const res = await call("/health", { method: "OPTIONS", headers: { origin: "http://localhost:8080" } });
     expect(res.status).toBe(204);
     expect(res.headers.get("access-control-allow-origin")).toBe("http://localhost:8080");
-    expect(res.headers.get("access-control-allow-methods")).toBe("GET, OPTIONS");
+    expect(res.headers.get("access-control-allow-methods")).toBe("GET, POST, OPTIONS");
   });
 });

@@ -38,7 +38,7 @@ build command `bun run build`, deploy command `npx wrangler deploy`, root direct
 
 ## The backend Worker (`paun-api`)
 
-A second, separate Worker in `workers/paun-api/` (own `wrangler.jsonc`, own deploys). It answers `GET /health` and `GET /spot` (the shared live price, below); the receipt scanner follows. Its URL will be `https://paun-api.paun-gold.workers.dev`.
+A second, separate Worker in `workers/paun-api/` (own `wrangler.jsonc`, own deploys). It answers `GET /health`, `GET /spot` (the shared live price) and `POST /scan` (the receipt scanner), both described below. Its URL will be `https://paun-api.paun-gold.workers.dev`.
 
 ```sh
 bun run dev:api         # runs it locally in the Workers runtime at http://127.0.0.1:8787 (no account needed)
@@ -75,6 +75,21 @@ One-time setup, by you:
 
 `/spot` answers `{priceUsdOz, fetchedAt, marketTime, provider, ageSeconds, marketOpen, stale}`. Times are UTC moments; `stale` means no new price for 45+ minutes on a weekday
 (the job looks broken), `marketOpen` means the price was struck in the last 30 minutes.
+
+### The receipt scanner (`POST /scan`)
+
+Reads a photo of a gold receipt or hallmark and returns the fields it can read, for the Vault page to pre-fill (phase 4.3). The photo goes to Google's Gemini and is not
+stored by Paun. It needs two secrets; until both are set the endpoint answers `503 scanner_not_configured`, so it is safe to deploy first.
+
+One-time setup, by you (never paste a secret in chat, a file or a commit):
+1. **Gemini key:** create one in Google AI Studio, then `bunx wrangler secret put GEMINI_API_KEY -c workers/paun-api/wrangler.jsonc`.
+   **Turn on billing for the key's project before real users scan receipts:** on the free tier Google may use submitted content to improve its products; on the paid tier it does not.
+2. **Turnstile secret** (from the widget you created): `bunx wrangler secret put TURNSTILE_SECRET -c workers/paun-api/wrangler.jsonc`.
+   The widget's *site key* is public and goes in the page code, not here.
+3. Optional variables in `wrangler.jsonc`: `GEMINI_MODEL`, `SCAN_DAILY_CAP` (200 scans a day for everyone), `SCAN_PER_VISITOR_HOUR` (10).
+
+Locally: put dummy values in `workers/paun-api/.dev.vars` (git-ignored), for example `TURNSTILE_SECRET=1x0000000000000000000000000000000AA` (Cloudflare's always-pass test secret)
+and a fake `GEMINI_API_KEY`, then `bun run dev:api`. Logs for this endpoint hold a status word and a timing only; never the photo, a token, a key, or anything the model read.
 
 ## Custom domain
 

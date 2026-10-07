@@ -19,7 +19,18 @@
 
   // The owner's GoldAPI plan allows 100 calls a month. These caps are enforced in code (src/budget.ts), never exceeded.
   // The key itself is a secret: `bunx wrangler secret put GOLDAPI_KEY -c workers/paun-api/wrangler.jsonc`.
-  "vars": { "MONTHLY_BUDGET": "90", "DAILY_BUDGET": "3" },
+  "vars": {
+    "MONTHLY_BUDGET": "90",
+    "DAILY_BUDGET": "3",
+
+    // The receipt scanner (POST /scan). The two secrets it needs are NOT here: GEMINI_API_KEY and TURNSTILE_SECRET are set with
+    // `wrangler secret put`; until both exist the endpoint answers 503 scanner_not_configured, so deploying first is safe.
+    // The model is checked against Google's current model list; change it here without touching code.
+    "GEMINI_MODEL": "gemini-3.5-flash-lite",
+    // At most this many scans a day for everyone (each costs a fraction of a cent), and this many per visitor per hour.
+    "SCAN_DAILY_CAP": "200",
+    "SCAN_PER_VISITOR_HOUR": "10",
+  },
 
   // Logs show status codes and timings only; nothing here logs a request body (the scanner's photos must never be logged).
   "observability": {

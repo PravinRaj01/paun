@@ -15,6 +15,13 @@ export type Env = {
   MONTHLY_BUDGET?: string;
   /** Hard cap on GoldAPI calls per day (UTC), so a long Yahoo outage cannot spend the month in a few days. */
   DAILY_BUDGET?: string;
+  /** Secrets for the receipt scanner (`wrangler secret put ...`). Without both, POST /scan answers 503 scanner_not_configured. */
+  GEMINI_API_KEY?: string;
+  TURNSTILE_SECRET?: string;
+  /** Plain variables: the Gemini model, the global daily scan cap, and scans per visitor per hour. */
+  GEMINI_MODEL?: string;
+  SCAN_DAILY_CAP?: string;
+  SCAN_PER_VISITOR_HOUR?: string;
   /** Comma-separated extra origins allowed to call us from a browser, e.g. a custom domain added later. */
   EXTRA_ORIGINS?: string;
 };

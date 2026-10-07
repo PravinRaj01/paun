@@ -24,15 +24,25 @@ export const yahooReply = (price: number) =>
   );
 
 /**
- * A fake `fetch` that answers by host and records every call: `{ yahoo, goldapi }` are each a Response factory or an Error to throw.
+ * A fake `fetch` that answers by host and records every call: each route is a Response factory or an Error to throw.
  * Anything else fails the test, so an unexpected request (say, to a provider on a read route) cannot go unnoticed.
  */
-export function fakeFetch(routes: { yahoo?: () => Response | Error; goldapi?: () => Response | Error }) {
-  const calls: { host: string; headers: Headers }[] = [];
+type Route = () => Response | Error;
+export function fakeFetch(routes: { yahoo?: Route; goldapi?: Route; turnstile?: Route; gemini?: Route }) {
+  const calls: { host: string; url: string; headers: Headers; body: string }[] = [];
   const impl = (async (input: string, init?: RequestInit) => {
-    const host = new URL(input).host;
-    calls.push({ host, headers: new Headers(init?.headers) });
-    const route = host.includes("yahoo") ? routes.yahoo : host.includes("goldapi") ? routes.goldapi : undefined;
+    const url = String(input);
+    const host = new URL(url).host;
+    calls.push({ host, url, headers: new Headers(init?.headers), body: init?.body ? String(init.body) : "" });
+    const route = host.includes("yahoo")
+      ? routes.yahoo
+      : host.includes("goldapi")
+        ? routes.goldapi
+        : host.includes("challenges.cloudflare")
+          ? routes.turnstile
+          : host.includes("generativelanguage")
+            ? routes.gemini
+            : undefined;
     if (!route) throw new Error(`unexpected request to ${host}`);
     const out = route();
     if (out instanceof Error) throw out;

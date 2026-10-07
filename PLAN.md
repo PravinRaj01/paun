@@ -361,7 +361,19 @@ UI. No DB needed. Reuse `normPurity()` legacy mapping.
   accuracy. A scanner that is wrong half the time on weight or purity is not shipped as "zero manual entry".
 - **Tests:** validation and sanitising of the model's answer, rate limit and daily cap logic, CORS allow-list, Turnstile failure paths and Gemini errors (all with mocked `fetch`);
   the pure `scanToVaultItem` mapper.
-- **Build order:** (1) Worker skeleton with `/health`, deployed; (2) `/scan` against a mocked Gemini; (3) front-end dialog; (4) real-photo evaluation; (5) Groq fallback only if needed.
+- **Build order (phases):**
+  | Phase | What | Status |
+  |---|---|---|
+  | 4.1 | Worker skeleton with `/health`, deployed | ✅ done (3b.3) |
+  | 4.2 | `POST /scan` against a mocked Gemini: origin allow-list, Turnstile check, per-visitor and daily caps, Gemini call, sanitising of every field | ✅ built on `feat/scan-endpoint` (253 tests in all; run locally against the real Turnstile check and a real Gemini request with fake keys: reaches Google, answers 400 for the fake key as expected). **Not yet verified with a real Gemini key**: the exact structured-output field (`responseJsonSchema`) and model name are taken from Google's current docs and are confirmed only by the first real call (phase 4.4). Until both secrets are set the endpoint answers `503 scanner_not_configured`, so deploying first is safe |
+  | 4.3 | Front-end: "Scan receipt" on the Vault page, resize + Turnstile widget (site key `0x4AAAAAAFQh142918CMU2zm`, public), editable pre-filled form, `scanToVaultItem`, EN/BM, privacy line | |
+  | 4.4 | Real-photo evaluation (`workers/paun-api/eval/`), per-field accuracy; decides whether it ships as "scan" or "scan, then check" | needs the owner's Gemini key and 3 to 5 sample photos |
+  | 4.5 | Groq fallback only if needed | |
+
+  **Request shape (built):** `POST /scan` with JSON `{ image: <base64 JPEG/PNG/WebP, resized by the browser>, mimeType, turnstileToken }`; answers `{ ok: true, readable, confidence: "high"|"medium"|"low", fields: { itemName, purity, weightGrams, makingFee: {amount, per: "gram"|"total"}, purchaseDate, totalPaid, currency } }`, each field `null` when not clearly readable or when it fails its check
+  (purity must be an app stamp or a karat label; weight 0 to 10,000 g; a real date, not in the future; a fee needs its basis). Errors: `forbidden_origin` 403, `invalid_request` 400 (with the field), `too_large` 413, `turnstile_failed` 403, `rate_limited` 429, `scanner_busy` 503 (daily cap), `scanner_not_configured` 503, `scanner_unavailable` 502, `image_rejected` 422.
+  Caps are variables: `SCAN_DAILY_CAP` 200, `SCAN_PER_VISITOR_HOUR` 10 (a visitor is a hash of the IP address; the address is never stored). Model: `GEMINI_MODEL` (default `gemini-3.5-flash-lite`).
+  Cost at current prices (checked 2026-10-08): about $0.30 per million input tokens for that model, so a scan is a fraction of a cent. The free tier is "used to improve Google's products"; the paid tier is not: **turn on billing for the Gemini key before real users scan receipts** (they contain personal details).
 - **Needs from the owner:** a Gemini API key (Google AI Studio); a Turnstile widget (site key + secret) from the Cloudflare dashboard; 3-5 sample receipt/hallmark photos with personal
   details covered; approval before any Cloudflare resource is created (KV namespace for the daily cap, rate-limit binding) and before deploying.
 
@@ -427,7 +439,7 @@ The `data` branch stays for the daily bot commits (keeps `main` history clean) �
 | **2c** *(new)* | **Safety net:** PR checks (tests + typecheck on every PR), tests for the app's money math (closes G8), Vault import fix (moved here from "Pending") | ✅ built on branch `chore/housekeeping` (PR pending review): CI workflow, 25 money-math tests, strict Vault import (checked end-to-end in a real browser: merge keeps existing items; broken file, non-list and duplicates all report correctly) |
 | 3 | 3C DCA Backtester (real 5-year history is already in the snapshot) | ✅ done 2026-10-07 (PR #3): engine `src/lib/dca.ts` with 23 hand-checked tests, page `/dca` (EN/BM) with a dock icon, checked in a real browser at desktop, 390 px and 360 px; live on the Worker |
 | **3b** *(new)* | **Live price**: shared near-live feed for the landing page (`paun-api /spot`, Yahoo + budgeted GoldAPI backup), a one-time "add your own key" pop-up inside the app, and **price honesty** (no invented trend, plain-language copy) | 🟡 spec rewritten 2026-10-07 (section 3B) for the 100-requests-a-month limit. Run as numbered phases 3b.1 to 3b.6 (table in section 3B): 3b.1 price honesty ✅ merged (PR #5); **3b.2 timezone labels built** (branch `feat/dates-with-timezone`, PR pending); then the Worker skeleton, the Yahoo-from-Cloudflare test, `/spot`, and the landing page. The scanner reuses the same Worker later |
-| 4 | 3D Receipt/Hallmark Scanner — first use of `paun-api` (needs the owner's Gemini key and a Turnstile widget) | 🟡 spec approved 2026-10-07 (see section 3D); next up |
+| 4 | 3D Receipt/Hallmark Scanner — first use of `paun-api` (needs the owner's Gemini key and a Turnstile widget) | 🟡 spec approved 2026-10-07 (section 3D). Phases 4.1 to 4.5: 4.1 ✅, 4.2 built (`/scan` against a mocked Gemini), next 4.3 front end and 4.4 real-photo evaluation (needs the owner's Gemini key and sample photos) |
 | 5 | 2 Notifications + 3E Street rates on `paun-api` + Neon (needs the owner's Neon account) | |
 | **6** *(moved from 2b)* | ML-B pretrained-forecaster benchmark — research only, never ships | |
 | later | ML-4 TFT challenger; parked ideas | |
