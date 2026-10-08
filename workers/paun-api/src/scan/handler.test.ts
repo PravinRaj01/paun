@@ -235,7 +235,7 @@ describe("privacy", () => {
   it("a response never contains the photo", async () => {
     const { json } = await post();
     expect(JSON.stringify(json)).not.toContain("AAAA");
-    expect(Object.keys(json).sort()).toEqual(["confidence", "fields", "ok", "readable"]);
+    expect(Object.keys(json).sort()).toEqual(["confidence", "fields", "items", "ok", "readable", "receipt"]);
   });
 
   it("only POST is allowed on /scan, and the browser's preflight check is answered", async () => {

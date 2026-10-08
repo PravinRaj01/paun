@@ -1,25 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SETTINGS, type Country, type Settings } from "./gold";
-import { fitWithin, requestScan, scanErrorKey, scanResponseSchema, scanToVaultForm, type ScanFieldsRead } from "./scan";
+import { fitWithin, requestScan, scanErrorKey, scanResponseSchema, type ScanItemRead } from "./scan";
 import en from "../locales/en.json";
 import ms from "../locales/ms.json";
 
-const countries: Country[] = [
-  { id: "my", name: "Malaysia", currency: "MYR", rate: 4.5, duty: 0, tax: 0 },
-  { id: "sg", name: "Singapore", currency: "SGD", rate: 1.3, duty: 0, tax: 0 },
-];
-const myr: Settings = { ...DEFAULT_SETTINGS, baseCurrency: "MYR" };
-const usd: Settings = { ...DEFAULT_SETTINGS, baseCurrency: "USD" };
-const fields = (over: Partial<ScanFieldsRead> = {}): ScanFieldsRead => ({
+const item = (over: Partial<ScanItemRead> = {}): ScanItemRead => ({
   itemName: "Rantai tangan 916",
   purity: "916",
   weightGrams: 12.5,
   makingFee: { amount: 8, per: "gram" },
-  purchaseDate: "2026-09-30",
-  totalPaid: 6120.5,
-  currency: "MYR",
+  lineTotal: 6120.5,
   ...over,
 });
+const receipt = { purchaseDate: "2026-09-30", totalPaid: 6120.5, currency: "MYR" };
+const good = { ok: true, readable: true, confidence: "high", receipt, items: [item()] };
 
 describe("fitWithin (shrinking a photo before upload)", () => {
   it("scales the longest side down to 1280 and keeps the proportions", () => {
@@ -33,73 +26,49 @@ describe("fitWithin (shrinking a photo before upload)", () => {
   });
 });
 
-describe("scanToVaultForm", () => {
-  it("fills every field it read, in the user's own currency without conversion", () => {
-    const r = scanToVaultForm(fields(), { settings: myr, countries });
-    expect(r.patch).toEqual({ name: "Rantai tangan 916", weight: "12.5", purity: "916", paid: "6120.5", date: "2026-09-30" });
-    expect(r.unread).toEqual([]);
-    expect(r.unknownCurrency).toBeNull();
+describe("the Worker's answer is validated before it reaches the review", () => {
+  it("accepts a well-formed answer with several pieces", () => {
+    const r = scanResponseSchema.safeParse({ ...good, items: [item(), item({ weightGrams: 40, lineTotal: 4212 }), item({ weightGrams: 50 })] });
+    expect(r.success && r.data.items.map((i) => i.weightGrams)).toEqual([12.5, 40, 50]);
   });
 
-  it("leaves unread fields out of the patch (so the form keeps what the user had) and lists them", () => {
-    const r = scanToVaultForm(fields({ weightGrams: null, purchaseDate: null, itemName: null, purity: null }), { settings: myr, countries });
-    expect(r.patch).toEqual({ paid: "6120.5" });
-    expect(r.unread).toEqual(["weight", "purity", "date"]);
+  it("still understands the older one-piece answer (the page can be deployed before the Worker)", () => {
+    const legacy = {
+      ok: true,
+      readable: true,
+      confidence: "medium",
+      fields: { itemName: "Gold Bar", purity: "999.9", weightGrams: 200, makingFee: null, purchaseDate: "2008-12-18", totalPaid: 30507, currency: "MYR" },
+    };
+    const r = scanResponseSchema.safeParse(legacy);
+    expect(r.success && r.data).toMatchObject({
+      receipt: { purchaseDate: "2008-12-18", totalPaid: 30507, currency: "MYR" },
+      items: [{ itemName: "Gold Bar", purity: "999.9", weightGrams: 200, lineTotal: null }],
+    });
   });
 
-  it("converts a receipt in another currency with the watchlist's rate into the base currency", () => {
-    // 130 SGD = 100 USD (rate 1.3) = 450 MYR (rate 4.5)
-    const r = scanToVaultForm(fields({ totalPaid: 130, currency: "SGD" }), { settings: myr, countries });
-    expect(r.patch.paid).toBe("450");
-    expect(scanToVaultForm(fields({ totalPaid: 130, currency: "SGD" }), { settings: usd, countries }).patch.paid).toBe("100");
+  it("an older answer with nothing readable in it becomes no pieces, not a blank piece", () => {
+    const legacy = { ok: true, readable: true, confidence: "low", fields: { itemName: null, purity: null, weightGrams: null, makingFee: null, ...receipt } };
+    const r = scanResponseSchema.safeParse(legacy);
+    expect(r.success && r.data.items).toEqual([]);
   });
 
-  it("USD needs no rate", () => {
-    expect(scanToVaultForm(fields({ totalPaid: 100, currency: "USD" }), { settings: myr, countries }).patch.paid).toBe("450");
-  });
-
-  it("never guesses a rate: an unknown currency leaves the price blank and says which currency it was", () => {
-    const r = scanToVaultForm(fields({ totalPaid: 5000, currency: "THB" }), { settings: myr, countries });
-    expect(r.patch.paid).toBeUndefined();
-    expect(r.unread).toContain("paid");
-    expect(r.unknownCurrency).toBe("THB");
-  });
-
-  it("a receipt with no currency printed is taken to be in the user's own", () => {
-    expect(scanToVaultForm(fields({ currency: null }), { settings: myr, countries }).patch.paid).toBe("6120.5");
-  });
-
-  it("no total on the receipt means no price in the form", () => {
-    const r = scanToVaultForm(fields({ totalPaid: null }), { settings: myr, countries });
-    expect(r.patch.paid).toBeUndefined();
-    expect(r.unread).toEqual(["paid"]);
-    expect(r.unknownCurrency).toBeNull();
-  });
-
-  it("rounds money to two decimals", () => {
-    expect(scanToVaultForm(fields({ totalPaid: 100, currency: "SGD" }), { settings: myr, countries }).patch.paid).toBe("346.15");
-  });
-});
-
-describe("the Worker's answer is validated before it touches the form", () => {
-  const good = { ok: true, readable: true, confidence: "high", fields: fields() };
-  it("accepts a well-formed answer", () => expect(scanResponseSchema.safeParse(good).success).toBe(true));
   it.each([
-    ["a purity the app does not know", { ...good, fields: fields({ purity: "925" as never }) }],
-    ["a negative weight", { ...good, fields: fields({ weightGrams: -1 }) }],
-    ["a malformed date", { ...good, fields: fields({ purchaseDate: "30/09/2026" }) }],
-    ["a currency that is not a 3-letter code", { ...good, fields: fields({ currency: "ringgit" }) }],
+    ["a purity the app does not know", { ...good, items: [item({ purity: "925" as never })] }],
+    ["a negative weight", { ...good, items: [item({ weightGrams: -1 })] }],
+    ["a malformed date", { ...good, receipt: { ...receipt, purchaseDate: "30/09/2026" } }],
+    ["a currency that is not a 3-letter code", { ...good, receipt: { ...receipt, currency: "ringgit" } }],
+    ["more than 20 pieces", { ...good, items: Array.from({ length: 21 }, () => item()) }],
+    ["neither items nor fields", { ok: true, readable: true, confidence: "high" }],
     ["an error body", { ok: false, error: "scanner_busy" }],
   ])("rejects %s", (_n, body) => expect(scanResponseSchema.safeParse(body).success).toBe(false));
 });
 
 describe("requestScan", () => {
-  const ok = { ok: true, readable: true, confidence: "high", fields: fields() };
   const reply = (body: unknown, status = 200) => (async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch;
 
   it("posts the photo, its type and the Turnstile token as JSON", async () => {
     let seen: { url: string; init: RequestInit } | undefined;
-    const spy = (async (url: string, init: RequestInit) => ((seen = { url, init }), new Response(JSON.stringify(ok)))) as unknown as typeof fetch;
+    const spy = (async (url: string, init: RequestInit) => ((seen = { url, init }), new Response(JSON.stringify(good)))) as unknown as typeof fetch;
     const res = await requestScan("QUJD", "image/jpeg", "tok-1", spy, "https://x/scan");
     expect(res).toMatchObject({ ok: true, readable: true });
     expect(seen?.url).toBe("https://x/scan");
@@ -109,7 +78,7 @@ describe("requestScan", () => {
 
   it("sends the visitor's own Gemini key in a header only when there is one, never in the body or the URL", async () => {
     const seen: { url: string; init: RequestInit }[] = [];
-    const spy = (async (url: string, init: RequestInit) => (seen.push({ url, init }), new Response(JSON.stringify(ok)))) as unknown as typeof fetch;
+    const spy = (async (url: string, init: RequestInit) => (seen.push({ url, init }), new Response(JSON.stringify(good)))) as unknown as typeof fetch;
     await requestScan("QUJD", "image/jpeg", "tok", spy, "https://x/scan");
     await requestScan("QUJD", "image/jpeg", "tok", spy, "https://x/scan", "AIzaSyOwnKeyForTesting_1234567890abcd");
     await requestScan("QUJD", "image/jpeg", "tok", spy, "https://x/scan", null);
@@ -126,7 +95,7 @@ describe("requestScan", () => {
   it("reports a network failure and a garbled answer as their own codes", async () => {
     const down = (async () => { throw new TypeError("fetch failed"); }) as unknown as typeof fetch;
     expect(await requestScan("a", "image/jpeg", "t", down, "https://x")).toEqual({ ok: false, error: "network" });
-    expect(await requestScan("a", "image/jpeg", "t", reply({ ok: true, fields: {} }), "https://x")).toEqual({ ok: false, error: "bad_answer" });
+    expect(await requestScan("a", "image/jpeg", "t", reply({ ok: true, items: {} }), "https://x")).toEqual({ ok: false, error: "bad_answer" });
   });
 });
 

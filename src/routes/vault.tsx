@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Camera, Download, Trash2, Upload } from "lucide-react";
 import { AppShell } from "@/components/gold/AppShell";
 import { BetaBadge, ScanReceiptDialog } from "@/components/gold/ScanReceiptDialog";
+import { ScanReview } from "@/components/gold/ScanReview";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,8 @@ import { useGold } from "@/lib/gold-store";
 import { baseRateOf, fineOf, fmt, GRAMS_PER_OUNCE, PURITIES, sellQuote, DEFAULT_TRADE, type PurityId, type VaultItem } from "@/lib/gold";
 import { formatCalendarDate, localToday } from "@/lib/datetime";
 import { useI18n, type CopyKey } from "@/lib/i18n";
-import { scanToVaultForm, type ScanResponse } from "@/lib/scan";
+import type { ScanResponse } from "@/lib/scan";
+import { loadReview, rowsToVaultItems, saveReview, scanToReview, type Review } from "@/lib/scan-review";
 import { parseVaultImport, type SkipReason } from "@/lib/vault-import";
 import { toast } from "sonner";
 
@@ -44,8 +46,13 @@ function VaultPage() {
   const { t, language } = useI18n();
   const nav = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
-  const formRef = useRef<HTMLDivElement>(null);
+  const reviewRef = useRef<HTMLDivElement>(null);
   const [scanOpen, setScanOpen] = useState(false);
+  // A scanned receipt waits here, as editable rows, until it is added or discarded. Only one at a time: while it waits, scanning is off.
+  // It survives a page refresh (sessionStorage; fields only, never the photo), so a refresh cannot be used to skip the review.
+  const [review, setReview] = useState<Review | null>(null);
+  useEffect(() => setReview(loadReview()), []);
+  useEffect(() => saveReview(review), [review]);
   const base = baseRateOf(settings, countries);
   const cur = settings.baseCurrency;
   const money = (n: number) => fmt(n * base, cur, settings.decimals);
@@ -69,25 +76,21 @@ function VaultPage() {
     setVault((v) => [...v, { id: crypto.randomUUID(), name: form.name || `${w} g ${form.purity}`, weight: w, purity: form.purity, paidUsd: Math.max(0, Number(form.paid) / base), date: form.date }]);
     setForm((f) => ({ ...f, name: "", weight: "", paid: "" }));
   };
-  // The scanner only FILLS the form below; the user checks every field and presses Add themselves.
-  const SCAN_FIELD: Record<"weight" | "purity" | "paid" | "date", CopyKey> = { weight: "scanFieldWeight", purity: "scanFieldPurity", paid: "scanFieldPaid", date: "scanFieldDate" };
+  // The scanner never saves anything: it opens the review panel, and only "Add N pieces" there adds to the vault.
   const onScanRead = (res: ScanResponse) => {
     if (!res.readable) {
       toast.error(t("scanNotReceipt"));
       return;
     }
-    const fill = scanToVaultForm(res.fields, { settings, countries });
-    setForm((f) => ({ ...f, ...fill.patch }));
-    formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    const notes = [t("scanFilled")];
-    if (fill.unread.length) {
-      const fields = fill.unread.map((k) => t(SCAN_FIELD[k])).join(", ");
-      notes.push(t("scanMissing", { fields, them: fill.unread.length > 1 ? (language === "ms" ? "semuanya" : "them") : (language === "ms" ? "medan itu" : "it") }));
-    }
-    if (fill.unknownCurrency) notes.push(t("scanUnknownCurrency", { currency: fill.unknownCurrency }));
-    if (res.confidence !== "high") notes.push(t("scanHardToRead"));
-    const caution = fill.unread.length > 0 || res.confidence !== "high";
-    (caution ? toast.warning : toast.success)(notes.join(" "), { duration: 12_000 });
+    setReview(scanToReview(res, { settings, countries, newId: () => crypto.randomUUID() }));
+    setTimeout(() => reviewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  };
+  const addReviewed = () => {
+    if (!review) return;
+    const items = rowsToVaultItems(review.rows, base, () => crypto.randomUUID());
+    setVault((v) => [...v, ...items]);
+    setReview(null);
+    toast.success(items.length === 1 ? t("scanAddedOne") : t("scanAddedMany", { n: items.length }));
   };
   const sellThis = (it: VaultItem) => {
     setTrade((p) => ({ ...p, side: "sell", weight: it.weight, purity: it.purity, askingPrice: 0 }));
@@ -134,7 +137,7 @@ function VaultPage() {
             <p className="text-sm text-muted-foreground">{t("vaultHint")}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={() => setScanOpen(true)}><Camera className="mr-1 h-4 w-4" />{t("scanButton")}<BetaBadge onPrimary /></Button>
+            <Button size="sm" onClick={() => setScanOpen(true)} disabled={review !== null} title={review ? t("scanPending") : undefined}><Camera className="mr-1 h-4 w-4" />{t("scanButton")}<BetaBadge onPrimary /></Button>
             <Button size="sm" variant="outline" onClick={exportJson} disabled={!vault.length}><Download className="mr-1 h-4 w-4" />{t("exportJson")}</Button>
             <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}><Upload className="mr-1 h-4 w-4" />{t("importJson")}</Button>
             <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={(e) => e.target.files?.[0] && importJson(e.target.files[0])} />
@@ -170,7 +173,13 @@ function VaultPage() {
           ))}
         </div>
 
-        <div ref={formRef} className="grid gap-3 rounded-lg border bg-card p-4 sm:grid-cols-5 sm:items-end">
+        {review && (
+          <div ref={reviewRef}>
+            <ScanReview review={review} onChange={setReview} onAdd={addReviewed} onDiscard={() => setReview(null)} />
+          </div>
+        )}
+
+        <div className="grid gap-3 rounded-lg border bg-card p-4 sm:grid-cols-5 sm:items-end">
           <div className="space-y-1.5 sm:col-span-2"><Label>{t("itemName")}</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Rantai 916" /></div>
           <div className="space-y-1.5"><Label>{t("weight")}</Label><Input type="number" inputMode="decimal" className="num" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>{t("purity")}</Label>

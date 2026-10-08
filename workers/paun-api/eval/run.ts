@@ -13,6 +13,7 @@
  *                                  "totalPaid": 6120.5, "currency": "MYR" } }
  *   null = the receipt does not show it (the right answer is null);  "ignore" = ambiguous in the photo, not scored.
  *   makingFee, when set, is { "amount": 8, "per": "gram" }.
+ *   itemCount (optional): how many gold pieces the receipt lists; scored as its own row. The other fields are scored on the FIRST piece.
  *
  * How a field is scored:
  *   correct   same as expected (numbers within 0.01)
@@ -24,7 +25,7 @@ import { extname, join, resolve } from "node:path";
 import { callGemini, DEFAULT_MODEL } from "../src/scan/gemini";
 import { sanitizeScan, type ScanFields } from "../src/scan/extract";
 
-const FIELDS = ["purity", "weightGrams", "makingFee", "purchaseDate", "totalPaid", "currency"] as const;
+const FIELDS = ["itemCount", "purity", "weightGrams", "makingFee", "purchaseDate", "totalPaid", "currency"] as const;
 type Field = (typeof FIELDS)[number];
 type Verdict = "correct" | "missed" | "WRONG" | "ignored";
 
@@ -75,11 +76,14 @@ async function main() {
       continue;
     }
     const scan = sanitizeScan(res.data, new Date());
-    console.log(`${name}  (${res.ms} ms, readable=${scan.readable}, confidence=${scan.confidence}, item: ${show(scan.fields.itemName)})`);
+    console.log(`${name}  (${res.ms} ms, readable=${scan.readable}, confidence=${scan.confidence}, ${scan.items.length} piece(s))`);
+    scan.items.forEach((it, i) =>
+      console.log(`    piece ${i + 1}: ${show(it.itemName)} | ${show(it.purity)} | ${show(it.weightGrams)} g | fee ${show(it.makingFee)} | line ${show(it.lineTotal)}`),
+    );
     const want = expected[name];
     if (!want) console.log("  (no expected answers for this photo; fields shown, not scored)");
     for (const f of FIELDS) {
-      const got = (scan.fields as ScanFields)[f];
+      const got = f === "itemCount" ? scan.items.length : (scan.fields as ScanFields)[f];
       if (!want || !(f in want)) {
         console.log(`  ${f.padEnd(13)} ${show(got)}`);
         continue;

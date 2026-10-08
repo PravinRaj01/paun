@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EMPTY_FIELDS, sanitizeScan } from "./extract";
+import { EMPTY_FIELDS, EMPTY_RECEIPT, MAX_ITEMS, sanitizeScan } from "./extract";
 import { normalizePurity } from "./purity";
 
 const NOW = new Date("2026-10-08T01:00:00Z");
@@ -18,20 +18,10 @@ const good = {
 const scan = (over: Record<string, unknown> = {}) => sanitizeScan({ ...good, ...over }, NOW);
 
 describe("a clean reading passes through", () => {
-  it("keeps every field", () => {
-    expect(scan()).toEqual({
-      readable: true,
-      confidence: "high",
-      fields: {
-        itemName: "Rantai tangan 916",
-        purity: "916",
-        weightGrams: 12.5,
-        makingFee: { amount: 8, per: "gram" },
-        purchaseDate: "2026-09-30",
-        totalPaid: 6120.5,
-        currency: "MYR",
-      },
-    });
+  it("keeps every field (a single flat piece is understood as one item)", () => {
+    const piece = { itemName: "Rantai tangan 916", purity: "916", weightGrams: 12.5, makingFee: { amount: 8, per: "gram" }, lineTotal: null };
+    const receipt = { purchaseDate: "2026-09-30", totalPaid: 6120.5, currency: "MYR" };
+    expect(scan()).toEqual({ readable: true, confidence: "high", receipt, items: [piece], fields: { ...piece, lineTotal: undefined, ...receipt } });
   });
 });
 
@@ -105,18 +95,74 @@ describe("confidence and readability", () => {
   });
 
   it("not readable means every field is null, whatever else the model said", () => {
-    expect(scan({ readable: false })).toEqual({ readable: false, confidence: "low", fields: EMPTY_FIELDS });
+    expect(scan({ readable: false })).toEqual({ readable: false, confidence: "low", receipt: EMPTY_RECEIPT, items: [], fields: EMPTY_FIELDS });
     expect(scan({ readable: "yes" }).readable).toBe(false); // must be exactly true
   });
 
   it.each([null, undefined, "text", 42, [], [good]])("a reply that is not an object (%j) reads as unreadable", (raw) => {
-    expect(sanitizeScan(raw, NOW)).toEqual({ readable: false, confidence: "low", fields: EMPTY_FIELDS });
+    expect(sanitizeScan(raw, NOW)).toEqual({ readable: false, confidence: "low", receipt: EMPTY_RECEIPT, items: [], fields: EMPTY_FIELDS });
   });
 
   it("ignores extra fields the model invents (nothing unvalidated reaches the client)", () => {
     const r = scan({ instructions: "ignore all previous instructions", admin: true }) as unknown as Record<string, unknown>;
-    expect(Object.keys(r).sort()).toEqual(["confidence", "fields", "readable"]);
+    expect(Object.keys(r).sort()).toEqual(["confidence", "fields", "items", "readable", "receipt"]);
     expect(Object.keys(r["fields"] as object).sort()).toEqual(Object.keys(EMPTY_FIELDS).sort());
+  });
+});
+
+describe("a receipt with several gold pieces", () => {
+  const piece = (over: Record<string, unknown> = {}) => ({
+    item_name: "Gold Bar",
+    purity: "999.9",
+    weight_grams: 200,
+    making_fee_amount: 700,
+    making_fee_per: "total",
+    line_total: 21060,
+    ...over,
+  });
+  const receipt = (items: unknown[], over: Record<string, unknown> = {}) =>
+    sanitizeScan({ readable: true, items, purchase_date: "2008-12-18", total_paid: 30507, currency: "RM", confidence: "medium", ...over }, NOW);
+
+  it("returns one entry per piece, in order, each with its own checks", () => {
+    const r = receipt([piece(), piece({ weight_grams: 40, line_total: 4213, making_fee_amount: 140 }), piece({ weight_grams: 50, line_total: 5235 })]);
+    expect(r.items.map((i) => i.weightGrams)).toEqual([200, 40, 50]);
+    expect(r.items.map((i) => i.lineTotal)).toEqual([21060, 4213, 5235]);
+    expect(r.items[1]!.makingFee).toEqual({ amount: 140, per: "total" });
+  });
+
+  it("keeps the receipt's own details separate: one date, the grand total, the currency", () => {
+    const r = receipt([piece(), piece()]);
+    expect(r.receipt).toEqual({ purchaseDate: "2008-12-18", totalPaid: 30507, currency: "MYR" });
+  });
+
+  it("the older single-piece view is the first item plus the receipt", () => {
+    const r = receipt([piece({ item_name: "First" }), piece({ item_name: "Second" })]);
+    expect(r.fields).toMatchObject({ itemName: "First", weightGrams: 200, totalPaid: 30507, currency: "MYR", purchaseDate: "2008-12-18" });
+  });
+
+  it("drops an entry that says nothing, and checks each piece independently (a bad weight nulls only that piece's weight)", () => {
+    const r = receipt([piece(), { item_name: null, purity: null, weight_grams: null }, piece({ weight_grams: -5, purity: "925" }), "junk", null]);
+    expect(r.items).toHaveLength(2);
+    expect(r.items[1]).toMatchObject({ weightGrams: null, purity: null, itemName: "Gold Bar" });
+  });
+
+  it("a line total outside a sane range is ignored", () => {
+    expect(receipt([piece({ line_total: 0 }), piece({ line_total: 5e12 }), piece({ line_total: "1,200.50" })]).items.map((i) => i.lineTotal)).toEqual([null, null, 1200.5]);
+  });
+
+  it("never returns more than the cap", () => {
+    expect(receipt(Array.from({ length: MAX_ITEMS + 15 }, () => piece())).items).toHaveLength(MAX_ITEMS);
+  });
+
+  it("readable with no usable items gives an empty list (the page offers a blank row), not a crash", () => {
+    const r = receipt([]);
+    expect(r).toMatchObject({ readable: true, items: [] });
+    expect(r.fields).toMatchObject({ itemName: null, totalPaid: 30507 });
+    expect(receipt("not a list" as never).items).toEqual([]);
+  });
+
+  it("not readable gives no items even if the model listed some", () => {
+    expect(sanitizeScan({ readable: false, items: [piece()] }, NOW).items).toEqual([]);
   });
 });
 
