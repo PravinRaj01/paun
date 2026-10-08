@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { baseRateOf, PURITIES, type Country, type PurityId, type Settings } from "./gold";
+import { PURITIES, type PurityId } from "./gold";
 import type { CopyKey } from "./i18n";
 
 /**
- * The receipt scanner, browser side (PLAN.md 3D, phase 4.3). The photo is resized in the browser, sent to our own `paun-api` Worker
- * (never to Google directly: the key lives in the Worker) together with a Cloudflare Turnstile token, and the answer fills the Vault
- * form. The user always sees and can change every field before anything is saved.
+ * The receipt scanner, browser side (PLAN.md 3D). The photo is resized in the browser, sent to our own `paun-api` Worker
+ * (never to Google directly: the key lives in the Worker) together with a Cloudflare Turnstile token. The answer is a list of
+ * gold pieces plus the receipt's own details; `scan-review.ts` turns it into rows the user checks before anything is saved.
  */
 const API = (import.meta.env["VITE_PAUN_API"] as string | undefined) ?? "https://paun-api.paun-gold.workers.dev";
 export const SCAN_URL = `${API}/scan`;
@@ -22,23 +22,62 @@ export function fitWithin(width: number, height: number, max: number = MAX_SIDE)
   return { width: Math.max(1, Math.round(width * k)), height: Math.max(1, Math.round(height * k)) };
 }
 
-const fieldsSchema = z.object({
+const purity = z.enum(PURITIES.map((p) => p.id) as [PurityId, ...PurityId[]]).nullable();
+const makingFee = z.object({ amount: z.number().min(0), per: z.enum(["gram", "total"]) }).nullable();
+const itemSchema = z.object({
   itemName: z.string().nullable(),
-  purity: z.enum(PURITIES.map((p) => p.id) as [PurityId, ...PurityId[]]).nullable(),
+  purity,
   weightGrams: z.number().positive().nullable(),
-  makingFee: z.object({ amount: z.number().min(0), per: z.enum(["gram", "total"]) }).nullable(),
+  makingFee,
+  lineTotal: z.number().positive().nullable(),
+});
+const receiptSchema = z.object({
   purchaseDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
   totalPaid: z.number().positive().nullable(),
   currency: z.string().regex(/^[A-Z]{3}$/).nullable(),
 });
-export const scanResponseSchema = z.object({
-  ok: z.literal(true),
-  readable: z.boolean(),
-  confidence: z.enum(["high", "medium", "low"]),
-  fields: fieldsSchema,
+/** What the Worker sent before multi-piece support: one piece's fields merged with the receipt's. Still understood, for the deploy window. */
+const legacyFieldsSchema = z.object({
+  itemName: z.string().nullable(),
+  purity,
+  weightGrams: z.number().positive().nullable(),
+  makingFee,
+  ...receiptSchema.shape,
 });
-export type ScanResponse = z.infer<typeof scanResponseSchema>;
-export type ScanFieldsRead = ScanResponse["fields"];
+
+export type ScanItemRead = z.infer<typeof itemSchema>;
+export type ScanReceiptRead = z.infer<typeof receiptSchema>;
+export type ScanResponse = {
+  ok: true;
+  readable: boolean;
+  confidence: "high" | "medium" | "low";
+  receipt: ScanReceiptRead;
+  items: ScanItemRead[];
+};
+
+export const scanResponseSchema = z
+  .object({
+    ok: z.literal(true),
+    readable: z.boolean(),
+    confidence: z.enum(["high", "medium", "low"]),
+    receipt: receiptSchema.optional(),
+    items: z.array(itemSchema).max(20).optional(),
+    fields: legacyFieldsSchema.optional(),
+  })
+  .refine((r) => (r.items && r.receipt) || r.fields, { message: "no items and no fields" })
+  .transform((r): ScanResponse => {
+    if (r.items && r.receipt) return { ok: true, readable: r.readable, confidence: r.confidence, receipt: r.receipt, items: r.items };
+    const f = r.fields!;
+    const piece: ScanItemRead = { itemName: f.itemName, purity: f.purity, weightGrams: f.weightGrams, makingFee: f.makingFee, lineTotal: null };
+    const any = piece.itemName !== null || piece.purity !== null || piece.weightGrams !== null;
+    return {
+      ok: true,
+      readable: r.readable,
+      confidence: r.confidence,
+      receipt: { purchaseDate: f.purchaseDate, totalPaid: f.totalPaid, currency: f.currency },
+      items: any ? [piece] : [],
+    };
+  });
 
 export type ScanFailure = { ok: false; error: string };
 
@@ -85,53 +124,4 @@ export async function requestScan(
   }
   const parsed = scanResponseSchema.safeParse(body);
   return parsed.success ? parsed.data : { ok: false, error: "bad_answer" };
-}
-
-export type VaultFormPatch = { name?: string; weight?: string; purity?: PurityId; paid?: string; date?: string };
-export type ScanFill = {
-  patch: VaultFormPatch;
-  /** Which of the form's fields could not be filled (so the page can ask the user for exactly those). */
-  unread: ("weight" | "purity" | "paid" | "date")[];
-  /** The receipt is in a currency we have no rate for, so the price was left for the user to type. */
-  unknownCurrency: string | null;
-};
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
-
-/**
- * Turn a reading into the Vault form's values. Only fields that were read are set; the rest keep what the user had.
- * The form takes the price in the user's BASE currency, so a receipt in another currency is converted with the watchlist's rate
- * (never a guessed one): if there is no rate for that currency the price is left blank and `unknownCurrency` says why.
- */
-export function scanToVaultForm(
-  fields: ScanFieldsRead,
-  ctx: { settings: Settings; countries: Country[] },
-): ScanFill {
-  const patch: VaultFormPatch = {};
-  const unread: ScanFill["unread"] = [];
-  let unknownCurrency: string | null = null;
-
-  if (fields.itemName) patch.name = fields.itemName;
-  if (fields.weightGrams !== null) patch.weight = String(fields.weightGrams);
-  else unread.push("weight");
-  if (fields.purity !== null) patch.purity = fields.purity;
-  else unread.push("purity");
-  if (fields.purchaseDate !== null) patch.date = fields.purchaseDate;
-  else unread.push("date");
-
-  if (fields.totalPaid !== null) {
-    const cur = ctx.settings.baseCurrency;
-    const code = fields.currency ?? cur; // a receipt with no currency printed is assumed to be in the user's own
-    if (code === cur) patch.paid = String(round2(fields.totalPaid));
-    else {
-      const rate = code === "USD" ? 1 : ctx.countries.find((c) => c.currency === code)?.rate;
-      if (rate && rate > 0) patch.paid = String(round2((fields.totalPaid / rate) * baseRateOf(ctx.settings, ctx.countries)));
-      else {
-        unknownCurrency = code;
-        unread.push("paid");
-      }
-    }
-  } else unread.push("paid");
-
-  return { patch, unread, unknownCurrency };
 }

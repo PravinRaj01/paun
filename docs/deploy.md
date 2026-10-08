@@ -90,7 +90,7 @@ One-time setup, by you (never paste a secret in chat, a file or a commit):
 
 Front end: the Vault page's **Scan receipt** button talks to `https://paun-api.paun-gold.workers.dev/scan` with the public Turnstile site key (both in `src/lib/scan.ts`).
 To test locally without the real widget, run the Worker (`bun run dev:api`, with `--var TURNSTILE_SECRET:1x0000000000000000000000000000000AA`) and the site with
-`VITE_PAUN_API=http://127.0.0.1:8787 VITE_TURNSTILE_SITE_KEY=1x00000000000000000000AA bun run dev` (Cloudflare's always-pass test keys). Use `bun run eval:scan` to measure accuracy on a folder of photos.
+`VITE_PAUN_API=http://127.0.0.1:8787 VITE_TURNSTILE_SITE_KEY=1x00000000000000000000AA bun run dev` (Cloudflare's always-pass test keys). Use `bun run eval:scan` to measure accuracy on a folder of photos (it also scores how many pieces each receipt lists, via `itemCount` in `expected.json`).
 
 Locally: put dummy values in `workers/paun-api/.dev.vars` (git-ignored), for example `TURNSTILE_SECRET=1x0000000000000000000000000000000AA` (Cloudflare's always-pass test secret)
 and a fake `GEMINI_API_KEY`, then `bun run dev:api`. Logs for this endpoint hold a status word and a timing only; never the photo, a token, a key, or anything the model read.
