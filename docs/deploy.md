@@ -97,6 +97,23 @@ and a fake `GEMINI_API_KEY`, then `bun run dev:api`. Logs for this endpoint hold
 
 A visitor can also use **their own Gemini key** (Settings, kept only in their browser). The page sends it in an `x-gemini-key` header; the Worker uses it for that one request instead of `GEMINI_API_KEY`, skips only the shared daily cap, and never stores or logs it (a test checks the logs). Google refusing the key shows the visitor a message that names the key.
 
+### Accounts (optional sign-in, in progress: PLAN.md item 4b)
+
+Better Auth runs inside `paun-api`, with its tables in the Neon project `paun`. Sign-in is Google's browser button plus a bearer token (no cookies).
+
+One-time setup, by you (never paste a secret into chat, a file or a commit):
+1. **Neon:** the database exists (project `paun`). Put its address into a Worker secret without ever showing it:
+   `bunx neonctl connection-string --project-id frosty-bird-18651199 --database-name neondb --role-name neondb_owner --pooled | bunx wrangler secret put DATABASE_URL -c workers/paun-api/wrangler.jsonc`
+2. **Signing secret:** `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))" | bunx wrangler secret put BETTER_AUTH_SECRET -c workers/paun-api/wrangler.jsonc`
+3. **Google:** a Web application OAuth client in Google Cloud. Its client id is in `wrangler.jsonc` (public); its secret: `bunx wrangler secret put GOOGLE_CLIENT_SECRET -c workers/paun-api/wrangler.jsonc`.
+   Under **Authorized JavaScript origins** add `http://localhost:8080` and `https://paun-web.paun-gold.workers.dev`.
+4. **Tables:** `DATABASE_URL="$(bunx neonctl connection-string --project-id frosty-bird-18651199 --database-name neondb --role-name neondb_owner)" bun workers/paun-api/migrations/run.ts`
+   applies the numbered files in `workers/paun-api/migrations/` once each (safe to re-run). Add changes as new numbered files; never edit an applied one.
+
+Until all of these exist the account routes answer `503 accounts_not_configured`; nothing else is affected.
+**Try it** (temporary page): open `/auth-test` on the live app (or `bun run dev`, then `http://localhost:8080/auth-test`), press the Google button, and the page prints your account id and email; **Sign out** then proves the old token is refused.
+Running the Worker locally against the real database needs the secrets and `BETTER_AUTH_URL=http://127.0.0.1:8788`: pass them as `--var NAME:value` to `wrangler dev`, or put them in the git-ignored `.dev.vars`.
+
 ## Custom domain
 
 Add the domain to your Cloudflare account, then uncomment `routes` in `wrangler.jsonc` (or add it under Workers -> Settings -> Domains).

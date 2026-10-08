@@ -22,6 +22,12 @@ export type Env = {
   GEMINI_MODEL?: string;
   SCAN_DAILY_CAP?: string;
   SCAN_PER_VISITOR_HOUR?: string;
+  /** Optional accounts (PLAN.md 4b). Secrets: DATABASE_URL (Neon), BETTER_AUTH_SECRET, GOOGLE_CLIENT_SECRET. Plain variables: the Google client id (public) and this API's own public URL. */
+  DATABASE_URL?: string;
+  BETTER_AUTH_SECRET?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  GOOGLE_CLIENT_ID?: string;
+  BETTER_AUTH_URL?: string;
   /** Comma-separated extra origins allowed to call us from a browser, e.g. a custom domain added later. */
   EXTRA_ORIGINS?: string;
 };

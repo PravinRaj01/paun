@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ArbitrageRouteImport } from './routes/arbitrage'
+import { Route as AuthTestRouteImport } from './routes/auth-test'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DcaRouteImport } from './routes/dca'
 import { Route as MarketsRouteImport } from './routes/markets'
@@ -24,6 +25,11 @@ const IndexRoute = IndexRouteImport.update({
 const ArbitrageRoute = ArbitrageRouteImport.update({
   id: '/arbitrage',
   path: '/arbitrage',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthTestRoute = AuthTestRouteImport.update({
+  id: '/auth-test',
+  path: '/auth-test',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -50,6 +56,7 @@ const VaultRoute = VaultRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/arbitrage': typeof ArbitrageRoute
+  '/auth-test': typeof AuthTestRoute
   '/dashboard': typeof DashboardRoute
   '/dca': typeof DcaRoute
   '/markets': typeof MarketsRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/arbitrage': typeof ArbitrageRoute
+  '/auth-test': typeof AuthTestRoute
   '/dashboard': typeof DashboardRoute
   '/dca': typeof DcaRoute
   '/markets': typeof MarketsRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/arbitrage': typeof ArbitrageRoute
+  '/auth-test': typeof AuthTestRoute
   '/dashboard': typeof DashboardRoute
   '/dca': typeof DcaRoute
   '/markets': typeof MarketsRoute
@@ -74,13 +83,28 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/arbitrage' | '/dashboard' | '/dca' | '/markets' | '/vault'
+  fullPaths:
+    | '/'
+    | '/arbitrage'
+    | '/auth-test'
+    | '/dashboard'
+    | '/dca'
+    | '/markets'
+    | '/vault'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/arbitrage' | '/dashboard' | '/dca' | '/markets' | '/vault'
+  to:
+    | '/'
+    | '/arbitrage'
+    | '/auth-test'
+    | '/dashboard'
+    | '/dca'
+    | '/markets'
+    | '/vault'
   id:
     | '__root__'
     | '/'
     | '/arbitrage'
+    | '/auth-test'
     | '/dashboard'
     | '/dca'
     | '/markets'
@@ -90,6 +114,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ArbitrageRoute: typeof ArbitrageRoute
+  AuthTestRoute: typeof AuthTestRoute
   DashboardRoute: typeof DashboardRoute
   DcaRoute: typeof DcaRoute
   MarketsRoute: typeof MarketsRoute
@@ -110,6 +135,13 @@ declare module '@tanstack/react-router' {
       path: '/arbitrage'
       fullPath: '/arbitrage'
       preLoaderRoute: typeof ArbitrageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth-test': {
+      id: '/auth-test'
+      path: '/auth-test'
+      fullPath: '/auth-test'
+      preLoaderRoute: typeof AuthTestRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -146,6 +178,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ArbitrageRoute: ArbitrageRoute,
+  AuthTestRoute: AuthTestRoute,
   DashboardRoute: DashboardRoute,
   DcaRoute: DcaRoute,
   MarketsRoute: MarketsRoute,

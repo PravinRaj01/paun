@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PURITIES, type PurityId } from "./gold";
+import { API_BASE } from "./api";
 import type { CopyKey } from "./i18n";
 
 /**
@@ -7,8 +8,7 @@ import type { CopyKey } from "./i18n";
  * (never to Google directly: the key lives in the Worker) together with a Cloudflare Turnstile token. The answer is a list of
  * gold pieces plus the receipt's own details; `scan-review.ts` turns it into rows the user checks before anything is saved.
  */
-const API = (import.meta.env["VITE_PAUN_API"] as string | undefined) ?? "https://paun-api.paun-gold.workers.dev";
-export const SCAN_URL = `${API}/scan`;
+export const SCAN_URL = `${API_BASE}/scan`;
 /** Public by design (it only identifies our widget); the matching secret lives in the Worker. `VITE_TURNSTILE_SITE_KEY` is for local tests. */
 export const TURNSTILE_SITE_KEY = (import.meta.env["VITE_TURNSTILE_SITE_KEY"] as string | undefined) ?? "0x4AAAAAAFQh142918CMU2zm";
 
