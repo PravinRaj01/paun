@@ -27,7 +27,7 @@ export async function handle(
       headers: {
         ...cors,
         "access-control-allow-methods": "GET, POST, OPTIONS",
-        "access-control-allow-headers": "content-type",
+        "access-control-allow-headers": "content-type, x-gemini-key",
         "access-control-max-age": "86400",
       },
     });

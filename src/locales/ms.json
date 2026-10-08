@@ -213,7 +213,6 @@
   "scanButton": "Imbas resit",
   "scanTitle": "Imbas resit atau cop ketulenan",
   "scanIntro": "Ambil atau pilih foto. Paun akan membacanya dan mengisi borang di bawah. Tiada apa disimpan sehingga anda menekan Tambah.",
-  "scanPrivacy": "Foto dihantar kepada Gemini Google untuk dibaca. Paun tidak menyimpannya.",
   "scanChoose": "Ambil atau pilih foto",
   "scanChange": "Pilih foto lain",
   "scanRun": "Baca foto",
@@ -236,5 +235,18 @@
   "scanFieldWeight": "berat",
   "scanFieldPurity": "ketulenan",
   "scanFieldPaid": "harga dibayar",
-  "scanFieldDate": "tarikh"
+  "scanFieldDate": "tarikh",
+  "scanBeta": "Beta",
+  "scanBetaTip": "Baharu dan boleh tersilap. Semak setiap medan.",
+  "scanPrivacyShared": "Foto anda dihantar kepada Gemini Google untuk dibaca; Paun tidak menyimpannya. Paun menggunakan tahap percuma Google, di mana Google mungkin menggunakan kandungan yang dihantar untuk menambah baik produknya. Untuk menggunakan syarat anda sendiri, tambah kunci Gemini anda sendiri dalam Tetapan.",
+  "scanPrivacyOwn": "Foto anda dihantar kepada Gemini Google menggunakan kunci anda sendiri, di bawah syarat akaun Google anda. Paun tidak menyimpannya.",
+  "scanErrOwnKey": "Google tidak menerima kunci Gemini anda. Semaknya dalam Tetapan (ia perlu kunci daripada Google AI Studio).",
+  "scanErrOwnQuota": "Kunci Gemini anda telah menggunakan had untuk sekarang. Cuba lagi nanti, atau buang kunci dalam Tetapan untuk menggunakan pengimbas kongsi Paun.",
+  "geminiKeyLabel": "Kunci Gemini (pilihan, untuk pengimbas resit)",
+  "geminiKeyHint": "Tanpa kunci, imbasan menggunakan kunci Gemini percuma kongsi Paun, di mana Google mungkin menggunakan foto anda untuk menambah baik produknya. Dengan kunci anda sendiri, imbasan tertakluk kepada syarat akaun Google anda (kunci berbayar tidak menggunakan foto anda untuk latihan Google; kunci percuma mungkin begitu). Paun tidak menyimpan kunci anda: ia kekal dalam pelayar ini dan melalui pelayan Paun hanya untuk sampai ke Google.",
+  "geminiKeyGet": "Dapatkan kunci daripada Google AI Studio",
+  "geminiKeyDevice": "Ingat pada peranti ini",
+  "geminiKeySession": "Sesi ini sahaja (dilupakan apabila pelayar ditutup)",
+  "geminiKeyInvalid": "Itu tidak kelihatan seperti kunci Gemini. Ia lebih kurang 39 aksara huruf, nombor, - dan _.",
+  "geminiKeyNotSaved": "Pelayar ini tidak membenarkan Paun mengingati kunci itu. Ia tidak akan digunakan."
 }

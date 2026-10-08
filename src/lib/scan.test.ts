@@ -107,6 +107,18 @@ describe("requestScan", () => {
     expect(JSON.parse(String(seen?.init.body))).toEqual({ image: "QUJD", mimeType: "image/jpeg", turnstileToken: "tok-1" });
   });
 
+  it("sends the visitor's own Gemini key in a header only when there is one, never in the body or the URL", async () => {
+    const seen: { url: string; init: RequestInit }[] = [];
+    const spy = (async (url: string, init: RequestInit) => (seen.push({ url, init }), new Response(JSON.stringify(ok)))) as unknown as typeof fetch;
+    await requestScan("QUJD", "image/jpeg", "tok", spy, "https://x/scan");
+    await requestScan("QUJD", "image/jpeg", "tok", spy, "https://x/scan", "AIzaSyOwnKeyForTesting_1234567890abcd");
+    await requestScan("QUJD", "image/jpeg", "tok", spy, "https://x/scan", null);
+    const h = (i: number) => new Headers(seen[i]!.init.headers).get("x-gemini-key");
+    expect([h(0), h(1), h(2)]).toEqual([null, "AIzaSyOwnKeyForTesting_1234567890abcd", null]);
+    expect(String(seen[1]!.init.body)).not.toContain("AIzaSy");
+    expect(seen[1]!.url).not.toContain("AIzaSy");
+  });
+
   it("passes the Worker's error code through", async () => {
     expect(await requestScan("a", "image/jpeg", "t", reply({ ok: false, error: "scanner_busy" }, 503), "https://x")).toEqual({ ok: false, error: "scanner_busy" });
   });
@@ -120,7 +132,7 @@ describe("requestScan", () => {
 
 describe("error messages", () => {
   it("every error the Worker can send has a message, and unknown ones fall back to 'unavailable'", () => {
-    for (const code of ["scanner_busy", "rate_limited", "turnstile_failed", "verification_unavailable", "too_large", "image_rejected", "network", "decode"]) {
+    for (const code of ["scanner_busy", "rate_limited", "turnstile_failed", "verification_unavailable", "too_large", "image_rejected", "network", "decode", "user_key_rejected", "user_key_quota"]) {
       expect(scanErrorKey(code)).not.toBe("scanErrUnavailable");
     }
     for (const code of ["scanner_not_configured", "forbidden_origin", "invalid_request", "scanner_unavailable", "something_new"]) {

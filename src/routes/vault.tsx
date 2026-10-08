@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Camera, Download, Trash2, Upload } from "lucide-react";
 import { AppShell } from "@/components/gold/AppShell";
-import { ScanReceiptDialog } from "@/components/gold/ScanReceiptDialog";
+import { BetaBadge, ScanReceiptDialog } from "@/components/gold/ScanReceiptDialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -134,7 +134,7 @@ function VaultPage() {
             <p className="text-sm text-muted-foreground">{t("vaultHint")}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={() => setScanOpen(true)}><Camera className="mr-1 h-4 w-4" />{t("scanButton")}</Button>
+            <Button size="sm" onClick={() => setScanOpen(true)}><Camera className="mr-1 h-4 w-4" />{t("scanButton")}<BetaBadge onPrimary /></Button>
             <Button size="sm" variant="outline" onClick={exportJson} disabled={!vault.length}><Download className="mr-1 h-4 w-4" />{t("exportJson")}</Button>
             <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}><Upload className="mr-1 h-4 w-4" />{t("importJson")}</Button>
             <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={(e) => e.target.files?.[0] && importJson(e.target.files[0])} />

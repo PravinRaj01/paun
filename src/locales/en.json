@@ -213,7 +213,6 @@
   "scanButton": "Scan receipt",
   "scanTitle": "Scan a receipt or hallmark",
   "scanIntro": "Take or choose a photo. Paun reads it and fills in the form below. Nothing is saved until you press Add.",
-  "scanPrivacy": "The photo is sent to Google's Gemini to be read. Paun does not store it.",
   "scanChoose": "Take or choose a photo",
   "scanChange": "Choose a different photo",
   "scanRun": "Read the photo",
@@ -236,5 +235,18 @@
   "scanFieldWeight": "weight",
   "scanFieldPurity": "purity",
   "scanFieldPaid": "price paid",
-  "scanFieldDate": "date"
+  "scanFieldDate": "date",
+  "scanBeta": "Beta",
+  "scanBetaTip": "New, can make mistakes. Check every field.",
+  "scanPrivacyShared": "Your photo is sent to Google's Gemini to be read; Paun does not store it. Paun uses Google's free tier, where Google may use submitted content to improve its products. To use your own terms, add your own Gemini key in Settings.",
+  "scanPrivacyOwn": "Your photo is sent to Google's Gemini using your own key, under your Google account's terms. Paun does not store it.",
+  "scanErrOwnKey": "Google did not accept your Gemini key. Check it in Settings (it should be a key from Google AI Studio).",
+  "scanErrOwnQuota": "Your Gemini key has used up its allowance for now. Try again later, or remove it in Settings to use Paun's shared scanner.",
+  "geminiKeyLabel": "Gemini key (optional, for the receipt scanner)",
+  "geminiKeyHint": "Without a key, scans use Paun's shared free Gemini key, where Google may use your photo to improve its products. With your own key, scans fall under your Google account's terms (a paid key keeps your photos out of Google's training; a free key may not). Paun never keeps your key: it stays in this browser and passes through Paun's server only to reach Google.",
+  "geminiKeyGet": "Get a key from Google AI Studio",
+  "geminiKeyDevice": "Remember on this device",
+  "geminiKeySession": "This session only (forgotten when the browser closes)",
+  "geminiKeyInvalid": "That does not look like a Gemini key. It is about 39 characters of letters, numbers, - and _.",
+  "geminiKeyNotSaved": "This browser would not let Paun remember the key. It will not be used."
 }
