@@ -113,6 +113,8 @@ One-time setup, by you (never paste a secret into chat, a file or a commit):
 Until all of these exist the account routes answer `503 accounts_not_configured`; nothing else is affected.
 **Vault sync (phase 4b.4):** once signed in, the app keeps the Vault in step across devices through `POST /sync` (the table is migration `002_vault.sql`; apply it with the migration runner above, which has already been done for the Neon project). Deleting the account deletes its synced pieces too (`on delete cascade`). At most 2,000 pieces per account.
 
+**Preferences and watchlist (phase 4b.5):** the same call also carries the preferences (language, display currency and its manual rate, decimals, price basis, simple/pro mode, theme) and the country watchlist, whole, newest change wins; table `user_prefs` (migration `003_prefs.sql`, already applied to the Neon project). A new device adopts what the account holds. The spot price, its source, API keys and the calculator's inputs never leave the device.
+
 **Try it:** open the app with `?accounts=1` once (for example `https://paun-web.paun-gold.workers.dev/vault?accounts=1`), open **Settings**, and use the **Account (optional, preview)** block: Sign in with Google, then Sign out, then **Delete my account** (this really deletes it). `?accounts=0` hides the block again. The block stays hidden for everyone else until Vault sync ships (phase 4b.4).
 Running the Worker locally against the real database needs the secrets and `BETTER_AUTH_URL=http://127.0.0.1:8788`: pass them as `--var NAME:value` to `wrangler dev`, or put them in the git-ignored `.dev.vars`.
 

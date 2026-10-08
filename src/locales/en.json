@@ -264,7 +264,7 @@
   "scanAddedOne": "Added 1 piece to your vault.",
   "scanAddedMany": "Added {{n}} pieces to your vault.",
   "acctTitle": "Account (optional, preview)",
-  "acctHint": "Sign in with Google to keep your Vault in step across your devices. Everything works without it.",
+  "acctHint": "Sign in with Google to keep your Vault, settings and country watchlist in step across your devices. Everything works without it.",
   "acctPrivacy": "Paun keeps your name, email and photo link from Google, nothing else, and never your Google password. You can delete the account at any time.",
   "acctSignedInAs": "Signed in as",
   "acctSignOut": "Sign out",

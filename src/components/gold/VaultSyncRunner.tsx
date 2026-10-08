@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import { readToken, signOut as signOutAccount, useAccount } from "@/lib/account";
 import { useGold } from "@/lib/gold-store";
 import { useI18n } from "@/lib/i18n";
+import { applyPrefs, canonicalJson, pickPrefs, sanitizeWatchlist } from "@/lib/prefs-sync";
 import { registerSyncTrigger, setSyncStatus } from "@/lib/sync-status";
 import { loadSyncState, newTombstones, runSync, saveSyncState, stampMissing, type SyncState } from "@/lib/vault-sync";
 
@@ -17,7 +18,7 @@ import { loadSyncState, newTombstones, runSync, saveSyncState, stampMissing, typ
 const DEBOUNCE_MS = 2500;
 
 export function VaultSyncRunner() {
-  const { vault, setVault, hydrated } = useGold();
+  const { vault, setVault, hydrated, settings, setSettings, countries, setCountries, excluded, setExcluded, theme, toggleTheme } = useGold();
   const account = useAccount();
   const { t } = useI18n();
   const vaultRef = useRef(vault);
@@ -28,6 +29,13 @@ export function VaultSyncRunner() {
   const running = useRef(false);
   const again = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The preferences and watchlist that travel with the account, as they are right now (whitelisted fields only)
+  const local = useMemo(() => ({ prefs: pickPrefs(settings, theme), watchlist: sanitizeWatchlist(countries, excluded) }), [settings, theme, countries, excluded]);
+  const localKey = useMemo(() => canonicalJson(local), [local]);
+  const localRef = useRef(local);
+  localRef.current = local;
+  const themeRef = useRef(theme);
+  themeRef.current = theme;
   const userId = account.status === "signedIn" ? account.user.id : null;
   const userIdRef = useRef<string | null>(userId);
   userIdRef.current = userId;
@@ -56,7 +64,7 @@ export function VaultSyncRunner() {
         setVault(stamped);
       }
       const firstSync = stateRef.current.userId !== uid;
-      const r = await runSync({ token, userId: uid, vault: stamped, state: stateRef.current });
+      const r = await runSync({ token, userId: uid, vault: stamped, state: stateRef.current, local: localRef.current });
       if (!r.ok) {
         setSyncStatus({ phase: "failed", error: r.error });
         // the server no longer accepts this session (it expired, or the account was deleted elsewhere): sign out here, quietly
@@ -69,7 +77,17 @@ export function VaultSyncRunner() {
         vaultRef.current = merged.vault;
         setVault(merged.vault);
       }
-      save(r.state);
+      save(r.state); // saved BEFORE applying anything, so what we apply is already "in step" and is not sent straight back
+      // settings the account holds that are newer than this device's (a new phone adopts the account's)
+      if (r.prefs) {
+        const received = r.prefs;
+        setSettings((s) => applyPrefs(s, received));
+        if (received.theme && received.theme !== themeRef.current) toggleTheme();
+      }
+      if (r.watchlist) {
+        setCountries(r.watchlist.countries);
+        setExcluded(r.watchlist.excluded);
+      }
       setSyncStatus({ phase: "idle", error: null, lastSyncAt: r.state.lastSyncAt, skipped: r.skipped });
       if (merged.added > 0 && firstSync) toast.success(tRef.current("syncMerged", { n: merged.added }));
     } finally {
@@ -80,7 +98,7 @@ export function VaultSyncRunner() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setVault]);
+  }, [setVault, setSettings, setCountries, setExcluded, toggleTheme]);
 
   const schedule = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
@@ -113,6 +131,11 @@ export function VaultSyncRunner() {
     serverRemoved.current = new Set();
     if (userIdRef.current) schedule();
   }, [vault, hydrated, schedule]);
+
+  // a preference or the watchlist changed: sync soon
+  useEffect(() => {
+    if (hydrated && userIdRef.current) schedule();
+  }, [localKey, hydrated, schedule]);
 
   // signed in (or back from being unreachable): sync now
   useEffect(() => {

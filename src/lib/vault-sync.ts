@@ -1,5 +1,6 @@
 import { API_BASE } from "./api";
 import { PURITIES, type VaultItem } from "./gold";
+import { canonicalJson, EPOCH, mergePrefs, parsePrefs, type PrefsValue, type Stamped, type WatchlistValue } from "./prefs-sync";
 
 /**
  * Vault sync, device side (PLAN.md 4b.4). The Vault stays plain LocalStorage written by five different places; this module never
@@ -15,7 +16,14 @@ const ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 export type Removal = { id: string; deletedAt: string };
 export type SyncItem = { id: string; name: string; weight: number; purity: string; paidUsd: number; date: string; updatedAt: string };
-export type SyncResponse = { ok: true; version: number; items: SyncItem[]; removed: Removal[] };
+export type SyncResponse = {
+  ok: true;
+  version: number;
+  items: SyncItem[];
+  removed: Removal[];
+  prefs?: Stamped<PrefsValue> | null; // absent from a server that predates settings sync
+  watchlist?: Stamped<WatchlistValue> | null;
+};
 
 /** Pieces and removals the device keeps between syncs. Saved in LocalStorage; contains no keys and no personal data beyond the pieces. */
 export type SyncState = {
@@ -24,8 +32,23 @@ export type SyncState = {
   lastSyncAt: string | null;
   lastPushedAt: string | null; // pieces changed after this moment still need sending
   tombstones: Removal[]; // pieces removed on this device that the server has not been told about
+  // Preferences and watchlist: the moment of the version this device is in step with, and a snapshot of it, to tell when something changed
+  prefsAt: string | null;
+  prefsJson: string | null;
+  watchlistAt: string | null;
+  watchlistJson: string | null;
 };
-export const EMPTY_STATE: SyncState = { userId: null, version: 0, lastSyncAt: null, lastPushedAt: null, tombstones: [] };
+export const EMPTY_STATE: SyncState = {
+  userId: null,
+  version: 0,
+  lastSyncAt: null,
+  lastPushedAt: null,
+  tombstones: [],
+  prefsAt: null,
+  prefsJson: null,
+  watchlistAt: null,
+  watchlistJson: null,
+};
 
 // ---------- the saved state ----------
 const KEY = "gold-assistant:sync";
@@ -42,6 +65,10 @@ export function loadSyncState(): SyncState {
       lastSyncAt: typeof v.lastSyncAt === "string" ? v.lastSyncAt : null,
       lastPushedAt: typeof v.lastPushedAt === "string" ? v.lastPushedAt : null,
       tombstones,
+      prefsAt: typeof v.prefsAt === "string" ? v.prefsAt : null,
+      prefsJson: typeof v.prefsJson === "string" ? v.prefsJson : null,
+      watchlistAt: typeof v.watchlistAt === "string" ? v.watchlistAt : null,
+      watchlistJson: typeof v.watchlistJson === "string" ? v.watchlistJson : null,
     };
   } catch {
     return { ...EMPTY_STATE };
@@ -144,8 +171,34 @@ export function applyPull(vault: VaultItem[], res: Pick<SyncResponse, "items" | 
 // ---------- one sync ----------
 export type SyncError = "offline" | "signed_out" | "rate_limited" | "too_many" | "invalid" | "unavailable";
 export type SyncOutcome =
-  | { ok: true; state: SyncState; merge: (current: VaultItem[]) => Merge; skipped: number; sent: number }
+  | {
+      ok: true;
+      state: SyncState;
+      merge: (current: VaultItem[]) => Merge;
+      skipped: number;
+      sent: number;
+      /** Preferences / watchlist the account holds that are newer than this device's: to be applied. Absent when nothing changed. */
+      prefs?: PrefsValue;
+      watchlist?: WatchlistValue;
+    }
   | { ok: false; error: SyncError };
+
+/**
+ * One half (preferences or watchlist) of the settle-up after a sync. `sentAt` is the time we stamped our own copy with, if we sent one.
+ * Adopt the server's copy when it is not the one we just sent (same time AND same contents) AND is newer than the version this device was last in step with
+ * (first sync: anything the account holds beats a device that has never synced settings); otherwise we are the newest, or already in step.
+ */
+function settle<T>(args: { sentAt: string | null; server: Stamped<T> | null | undefined; stateAt: string | null; stateJson: string | null; localJson: string; adoptJson: (v: T) => string }) {
+  const { sentAt, server, stateAt, stateJson, localJson, adoptJson } = args;
+  // The server's copy is OURS when it carries the time we stamped and says the same thing. Comparing contents too matters: two devices
+  // that both made their first save stamp it with the same epoch marker, and the second must still notice the account kept the first's.
+  const ours = !!server && sentAt !== null && server.updatedAt === sentAt && canonicalJson(server.value) === localJson;
+  if (server && !ours && (stateAt === null || Date.parse(server.updatedAt) > Date.parse(stateAt))) {
+    return { at: server.updatedAt as string | null, json: adoptJson(server.value) as string | null, apply: server.value as T | undefined };
+  }
+  if (sentAt !== null) return { at: sentAt as string | null, json: localJson as string | null, apply: undefined as T | undefined };
+  return { at: stateAt, json: stateJson, apply: undefined as T | undefined };
+}
 
 const errorFor = (status: number): SyncError =>
   status === 401 ? "signed_out" : status === 429 ? "rate_limited" : status === 413 ? "too_many" : status === 400 ? "invalid" : "unavailable";
@@ -162,6 +215,8 @@ export async function runSync(o: {
   userId: string;
   vault: VaultItem[];
   state: SyncState;
+  /** This device's current preferences and watchlist. Omit to leave settings out of the sync. */
+  local?: { prefs: PrefsValue; watchlist: WatchlistValue };
   now?: Date;
   fetchImpl?: typeof fetch;
   base?: string;
@@ -173,12 +228,21 @@ export async function runSync(o: {
   const push = planPush(o.vault, state, o.userId, now);
   const since = Math.max(0, state.version - CURSOR_OVERLAP);
 
+  // settings: send a half only when it differs from the version this device was last in step with
+  const prefsJson = o.local ? canonicalJson(parsePrefs(o.local.prefs)) : null;
+  const listJson = o.local ? canonicalJson(o.local.watchlist) : null;
+  const sentPrefsAt = o.local && prefsJson !== state.prefsJson ? (state.prefsJson === null ? EPOCH : now.toISOString()) : null;
+  const sentListAt = o.local && listJson !== state.watchlistJson ? (state.watchlistJson === null ? EPOCH : now.toISOString()) : null;
+  const request: Record<string, unknown> = { since, items: push.items, removed: push.removed };
+  if (o.local && sentPrefsAt) request["prefs"] = { value: parsePrefs(o.local.prefs), updatedAt: sentPrefsAt };
+  if (o.local && sentListAt) request["watchlist"] = { value: o.local.watchlist, updatedAt: sentListAt };
+
   let res: Response;
   try {
     res = await fetchImpl(`${base}/sync`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${o.token}` },
-      body: JSON.stringify({ since, items: push.items, removed: push.removed }),
+      body: JSON.stringify(request),
       signal: AbortSignal.timeout(30_000),
     });
   } catch {
@@ -195,9 +259,29 @@ export async function runSync(o: {
     lastSyncAt: now.toISOString(),
     lastPushedAt: now.toISOString(), // anything changed after the START of this sync is sent next time
     tombstones: state.tombstones.filter((t) => !sentTombstones.has(`${t.id}|${t.deletedAt}`)),
+    prefsAt: null,
+    prefsJson: null,
+    watchlistAt: null,
+    watchlistJson: null,
   };
   const pulled = { items: body.items as SyncItem[], removed: body.removed as Removal[] };
-  return { ok: true, state: next, merge: (current) => applyPull(current, pulled), skipped: push.skipped, sent: push.items.length + push.removed.length };
+  const out: Extract<SyncOutcome, { ok: true }> = { ok: true, state: next, merge: (current) => applyPull(current, pulled), skipped: push.skipped, sent: push.items.length + push.removed.length };
+  if (o.local && prefsJson !== null && listJson !== null) {
+    const p = settle<PrefsValue>({ sentAt: sentPrefsAt, server: body.prefs, stateAt: state.prefsAt, stateJson: state.prefsJson, localJson: prefsJson, adoptJson: (v) => canonicalJson(mergePrefs(o.local!.prefs, v)) });
+    const w = settle<WatchlistValue>({ sentAt: sentListAt, server: body.watchlist, stateAt: state.watchlistAt, stateJson: state.watchlistJson, localJson: listJson, adoptJson: (v) => canonicalJson(v) });
+    next.prefsAt = p.at;
+    next.prefsJson = p.json;
+    next.watchlistAt = w.at;
+    next.watchlistJson = w.json;
+    if (p.apply) out.prefs = parsePrefs(p.apply);
+    if (w.apply) out.watchlist = w.apply;
+  } else {
+    next.prefsAt = state.prefsAt;
+    next.prefsJson = state.prefsJson;
+    next.watchlistAt = state.watchlistAt;
+    next.watchlistJson = state.watchlistJson;
+  }
+  return out;
 }
 
 /** Pieces that disappeared from the Vault since the last look, as tombstones (skipping ones we removed ourselves because the server said so). */
