@@ -13,6 +13,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { accountsPreviewEnabled, useAccount, type AccountError } from "@/lib/account";
+import { formatAgo, formatMoment } from "@/lib/datetime";
+import { resetSyncStatus, syncNow, useSyncStatus } from "@/lib/sync-status";
+import { clearSyncState, type SyncError } from "@/lib/vault-sync";
 import { useI18n, type CopyKey } from "@/lib/i18n";
 
 const ERROR_COPY: Record<AccountError, CopyKey> = {
@@ -22,6 +25,25 @@ const ERROR_COPY: Record<AccountError, CopyKey> = {
   unavailable: "acctErrUnavailable",
 };
 
+const SYNC_ERROR_COPY: Record<SyncError, CopyKey> = {
+  offline: "syncOffline",
+  signed_out: "syncSignedOut",
+  rate_limited: "syncRateLimited",
+  too_many: "syncLimit",
+  invalid: "syncError",
+  unavailable: "syncError",
+};
+
+/** Re-renders every minute so "3 min ago" stays honest while the dialog is open. */
+function useMinuteClock(): Date {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  return now;
+}
+
 /**
  * The optional account, inside Settings (PLAN.md 4b). Signed out: a short honest explanation and Google's button. Signed in: who you
  * are, Sign out (your pieces stay on this device) and Delete (removes the account and what is stored for it on Paun's server).
@@ -30,6 +52,8 @@ const ERROR_COPY: Record<AccountError, CopyKey> = {
 export function AccountSection() {
   const { t, language } = useI18n();
   const account = useAccount();
+  const sync = useSyncStatus();
+  const now = useMinuteClock();
   const [enabled, setEnabled] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<CopyKey | null>(null);
@@ -49,7 +73,11 @@ export function AccountSection() {
     const r = await account.deleteAccount();
     setBusy(false);
     setConfirmDelete(false);
-    if (r.ok) toast.success(t("acctDeleted"));
+    if (r.ok) {
+      clearSyncState(); // the next account to sign in on this device starts fresh
+      resetSyncStatus();
+      toast.success(t("acctDeleted"));
+    }
     else setError(ERROR_COPY[r.error]);
   };
 
@@ -68,8 +96,21 @@ export function AccountSection() {
               {account.user.name ? <div className="truncate text-xs text-muted-foreground">{account.user.email}</div> : null}
             </div>
           </div>
+          <p className="text-xs text-muted-foreground" aria-live="polite" data-testid="sync-status">
+            {sync.phase === "syncing"
+              ? t("syncSyncing")
+              : sync.phase === "failed" && sync.error
+                ? t(SYNC_ERROR_COPY[sync.error])
+                : sync.lastSyncAt
+                  ? t("syncLast", { ago: formatAgo(sync.lastSyncAt, now, language), when: formatMoment(sync.lastSyncAt, language) })
+                  : t("syncNotYet")}
+            {sync.skipped > 0 ? ` ${t("syncSkipped", { n: sync.skipped })}` : ""}
+          </p>
           <p className="text-xs text-muted-foreground">{t("acctSignOutNote")}</p>
           <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" disabled={busy || sync.phase === "syncing"} onClick={() => syncNow()}>
+              {t("syncNow")}
+            </Button>
             <Button size="sm" variant="outline" disabled={busy} onClick={() => void account.signOut().then(() => toast(t("acctSignedOutToast")))}>
               {t("acctSignOut")}
             </Button>

@@ -4,13 +4,14 @@ import type { Env, ExecutionContextLike, ScheduledEventLike } from "./env";
 import { json } from "./http";
 import { handleScan } from "./scan/handler";
 import { readSpot, refreshSpot } from "./spot";
+import { handleSync } from "./vault/handler";
 
 /**
  * paun-api: Paun's backend Worker (PLAN.md, "Backend: paun-api"). It is a separate Worker from the web app (`paun-web`),
  * deployed on its own, so a backend change never redeploys the site and the site never holds a backend secret.
  *
  * Endpoints: GET /health, GET /spot (the shared near-live price, from KV only), POST /scan (the receipt scanner),
- * /api/auth/* and /me (optional accounts, PLAN.md 4b).
+ * /api/auth/*, /me and POST /sync (optional accounts and Vault sync, PLAN.md 4b).
  * Scheduled: the price refresh, weekdays every 15 minutes (see wrangler.jsonc).
  */
 export async function handle(
@@ -40,6 +41,10 @@ export async function handle(
     if (request.method === "DELETE") return handleDeleteMe(request, env, cors, ctx, undefined, now);
     if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405, { ...cors, allow: "GET, DELETE, OPTIONS" });
     return handleMe(request, env, cors, ctx);
+  }
+  if (url.pathname === "/sync") {
+    if (request.method !== "POST") return json({ error: "method_not_allowed" }, 405, { ...cors, allow: "POST, OPTIONS" });
+    return handleSync(request, env, cors, ctx, undefined, undefined, now);
   }
   if (url.pathname === "/scan") {
     if (request.method !== "POST") return json({ error: "method_not_allowed" }, 405, { ...cors, allow: "POST, OPTIONS" });

@@ -6,41 +6,11 @@ import { DELETE_PER_HOUR, handleAuthRoute, handleDeleteMe, handleMe, SIGN_IN_PER
 import { authConfigured, authOptions, withoutProviderTokens, type AuthFactory, type AuthLike } from "./auth";
 import { corsHeaders } from "./cors";
 import { handle } from "./index";
+import { accountEnv, memoryAuth, type TestHelpers } from "./auth-test-kit";
 import { testEnv } from "./test-kit";
 
 const ORIGIN = "https://paun-web.paun-gold.workers.dev";
 const NOW = new Date("2026-10-08T05:00:00Z");
-const accountEnv = (over: Record<string, string | undefined> = {}) =>
-  testEnv({
-    DATABASE_URL: "postgresql://not-used-in-tests",
-    BETTER_AUTH_SECRET: "test-secret-test-secret-test-secret-12345",
-    GOOGLE_CLIENT_ID: "test-client-id.apps.googleusercontent.com",
-    GOOGLE_CLIENT_SECRET: "test-client-secret",
-    BETTER_AUTH_URL: "https://paun-api.paun-gold.workers.dev",
-    ...over,
-  } as never);
-
-/** The slice of the library's test helpers used here (its own types are very heavy). */
-type TestHelpers = {
-  createUser: (o: { email: string; name: string }) => unknown;
-  saveUser: (u: unknown) => Promise<{ id: string }>;
-  login: (o: { userId: string }) => Promise<{ cookies: { name: string; value: string }[] }>;
-};
-
-/** The real library on an in-memory database, with its test helpers, so tests can make a real signed-in session without Google. */
-async function memoryAuth(env = accountEnv()) {
-  const db = { user: [], session: [], account: [], verification: [] };
-  const closed: number[] = [];
-  const auth = betterAuth({ ...authOptions(env), database: memoryAdapter(db), plugins: [bearer(), testUtils()] as never });
-  const factory: AuthFactory = () => ({ auth: auth as unknown as AuthLike, close: async () => void closed.push(1) });
-  const test = (await (auth as unknown as { $context: Promise<{ test: TestHelpers }> }).$context).test;
-  const user = await test.saveUser(test.createUser({ email: "member@example.com", name: "Member One" }));
-  const login = await test.login({ userId: user.id });
-  const cookie = login.cookies.find((c) => c.name.includes("session_token"))!;
-  const bearerToken = decodeURIComponent(cookie.value);
-  return { env, factory, user, bearerToken, closed, db };
-}
-
 const req = (path: string, init: RequestInit & { headers?: Record<string, string> } = {}) =>
   new Request(`https://paun-api.paun-gold.workers.dev${path}`, { ...init, headers: { origin: ORIGIN, ...(init.headers ?? {}) } });
 const cors = (env = accountEnv()) => corsHeaders(ORIGIN, env);

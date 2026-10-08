@@ -264,7 +264,7 @@
   "scanAddedOne": "Added 1 piece to your vault.",
   "scanAddedMany": "Added {{n}} pieces to your vault.",
   "acctTitle": "Account (optional, preview)",
-  "acctHint": "Sign in with Google. Syncing your Vault across devices is coming next; for now signing in only creates your account. Everything works without it.",
+  "acctHint": "Sign in with Google to keep your Vault in step across your devices. Everything works without it.",
   "acctPrivacy": "Paun keeps your name, email and photo link from Google, nothing else, and never your Google password. You can delete the account at any time.",
   "acctSignedInAs": "Signed in as",
   "acctSignOut": "Sign out",
@@ -281,5 +281,16 @@
   "acctErrRejected": "That sign-in was not accepted. Please try again.",
   "acctErrLimit": "Too many attempts. Please wait a while and try again.",
   "acctErrUnavailable": "Sign-in is not available right now.",
-  "acctGoogleBlocked": "Google's sign-in could not load. An ad blocker or the network may be blocking it."
+  "acctGoogleBlocked": "Google's sign-in could not load. An ad blocker or the network may be blocking it.",
+  "syncNow": "Sync now",
+  "syncSyncing": "Syncing…",
+  "syncLast": "Synced {{ago}} ({{when}})",
+  "syncNotYet": "Not synced yet.",
+  "syncOffline": "Offline. Your changes will sync when you are back online.",
+  "syncError": "Could not sync just now. It will try again.",
+  "syncRateLimited": "Too many syncs in the last hour. It will catch up later.",
+  "syncLimit": "Your account holds the maximum of 2,000 pieces. Remove some, then sync again.",
+  "syncSignedOut": "Your sign-in has expired. Please sign in again.",
+  "syncSkipped": "{{n}} piece(s) were left out because their details are not valid.",
+  "syncMerged": "Added {{n}} piece(s) from your account to this device."
 }
