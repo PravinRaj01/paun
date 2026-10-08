@@ -17,13 +17,22 @@ import type { Env } from "./env";
  *      (the app and this API are different sites, because workers.dev is a public suffix).
  * Only Google sign-in exists for now: email and password are off, and no other provider is configured.
  */
-/** The only two things our routes use from the library, so the rest of its large type surface stays out of our code. */
+/** The few things our routes use from the library, so the rest of its large type surface stays out of our code. */
 export type AuthLike = {
   handler: (request: Request) => Promise<Response>;
+  $context: Promise<{ internalAdapter: { deleteUser: (userId: string) => Promise<void> } }>;
   api: { getSession: (ctx: { headers: Headers }) => Promise<{ user: { id: string; email: string; name: string; image?: string | null } } | null> };
 };
 export type AuthHandle = { auth: AuthLike; close: () => Promise<void> };
 export type AuthFactory = (env: Env) => AuthHandle;
+
+/**
+ * We only ever need to know WHO someone is, and we never call a Google API on their behalf, so none of Google's own tokens is kept:
+ * the library would otherwise store the ID token (readable) and any access or refresh token in the `account` table.
+ */
+export const withoutProviderTokens = <T extends Record<string, unknown>>(account: T): { data: T } => ({
+  data: { ...account, idToken: null, accessToken: null, refreshToken: null, accessTokenExpiresAt: null, refreshTokenExpiresAt: null },
+});
 
 /** The options every environment shares. Tests add a memory database (and test helpers) on top; production adds Neon. */
 export function authOptions(env: Env): BetterAuthOptions {
@@ -35,8 +44,14 @@ export function authOptions(env: Env): BetterAuthOptions {
       google: { clientId: env.GOOGLE_CLIENT_ID ?? "", clientSecret: env.GOOGLE_CLIENT_SECRET ?? "" },
     },
     emailAndPassword: { enabled: false },
-    // we only need to know WHO someone is: keep Google's own tokens out of the database in readable form
+    // belt and braces: should a provider token ever be stored, it is encrypted. (The hook below means none is.)
     account: { encryptOAuthTokens: true },
+    databaseHooks: {
+      account: {
+        create: { before: async (account) => withoutProviderTokens(account) },
+        update: { before: async (account) => withoutProviderTokens(account) },
+      },
+    },
     plugins: [bearer()],
     // the same allow-list the rest of the API uses: the live app, its branch previews, and localhost
     trustedOrigins: (request) => {

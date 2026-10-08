@@ -1,9 +1,9 @@
 import { betterAuth } from "better-auth";
 import { memoryAdapter } from "better-auth/adapters/memory";
 import { bearer, testUtils } from "better-auth/plugins";
-import { describe, expect, it } from "vitest";
-import { handleAuthRoute, handleMe } from "./accounts";
-import { authConfigured, authOptions, type AuthFactory, type AuthLike } from "./auth";
+import { describe, expect, it, vi } from "vitest";
+import { DELETE_PER_HOUR, handleAuthRoute, handleDeleteMe, handleMe, SIGN_IN_PER_HOUR } from "./accounts";
+import { authConfigured, authOptions, withoutProviderTokens, type AuthFactory, type AuthLike } from "./auth";
 import { corsHeaders } from "./cors";
 import { handle } from "./index";
 import { testEnv } from "./test-kit";
@@ -150,6 +150,108 @@ describe("a signed-in session (real library, in-memory database)", () => {
     expect(closed).toHaveLength(1);
     await handleMe(req("/me", { headers: { authorization: `Bearer ${bearerToken}` } }), env, cors(env), undefined, factory); // no waitUntil: closed before returning
     expect(closed).toHaveLength(2);
+  });
+});
+
+describe("Google's own tokens are never kept", () => {
+  it("the hook blanks every provider token and leaves the rest of the account alone", () => {
+    const out = withoutProviderTokens({ id: "a1", userId: "u1", providerId: "google", accountId: "123", idToken: "eyJhbGciOi...", accessToken: "ya29.x", refreshToken: "1//x", accessTokenExpiresAt: new Date(), refreshTokenExpiresAt: new Date(), scope: "openid" });
+    expect(out.data).toMatchObject({ id: "a1", userId: "u1", providerId: "google", accountId: "123", scope: "openid", idToken: null, accessToken: null, refreshToken: null, accessTokenExpiresAt: null, refreshTokenExpiresAt: null });
+  });
+
+  it("through the library's real database path: a Google account saved with tokens is stored without them", async () => {
+    const { db, user } = await memoryAuth();
+    const env = accountEnv();
+    const auth = betterAuth({ ...authOptions(env), database: memoryAdapter(db) });
+    const ctx = (await (auth as unknown as { $context: Promise<{ internalAdapter: { createAccount: (a: Record<string, unknown>) => Promise<unknown> } }> }).$context);
+    await ctx.internalAdapter.createAccount({ userId: user.id, providerId: "google", accountId: "g-123", idToken: "eyJhbGciOiJSUzI1NiJ9.payload.sig", accessToken: "ya29.access", refreshToken: "1//refresh" });
+    const stored = (db.account as Record<string, unknown>[]).find((a) => a["accountId"] === "g-123")!;
+    expect(stored["providerId"]).toBe("google");
+    expect([stored["idToken"], stored["accessToken"], stored["refreshToken"]]).toEqual([null, null, null]);
+  });
+});
+
+describe("DELETE /me: deleting an account", () => {
+  const del = (path = "/me", headers: Record<string, string> = {}) => req(path, { method: "DELETE", headers });
+
+  it("removes the user, their sessions and their linked sign-in, and the old token stops working", async () => {
+    const { env, factory, user, bearerToken, db } = await memoryAuth();
+    // a linked Google sign-in, saved the way the library saves one
+    const auth = betterAuth({ ...authOptions(env), database: memoryAdapter(db) });
+    const ctx = await (auth as unknown as { $context: Promise<{ internalAdapter: { createAccount: (a: Record<string, unknown>) => Promise<unknown> } }> }).$context;
+    await ctx.internalAdapter.createAccount({ userId: user.id, providerId: "google", accountId: "g-1" });
+    expect([db.user.length, db.session.length, db.account.length]).toEqual([1, 1, 1]);
+
+    const res = await handleDeleteMe(del("/me", { authorization: `Bearer ${bearerToken}` }), env, cors(env), undefined, factory);
+    expect([res.status, await res.json()]).toEqual([200, { ok: true }]);
+    expect([db.user.length, db.session.length, db.account.length]).toEqual([0, 0, 0]);
+
+    const after = await handleMe(req("/me", { headers: { authorization: `Bearer ${bearerToken}` } }), env, cors(env), undefined, factory);
+    expect(after.status).toBe(401);
+  });
+
+  it("only ever deletes the person asking: another account is untouched", async () => {
+    const { env, factory, bearerToken, db } = await memoryAuth();
+    const auth = betterAuth({ ...authOptions(env), database: memoryAdapter(db), plugins: [bearer(), testUtils()] as never });
+    const test = (await (auth as unknown as { $context: Promise<{ test: TestHelpers }> }).$context).test;
+    const other = await test.saveUser(test.createUser({ email: "other@example.com", name: "Other" }));
+    await test.login({ userId: other.id });
+    await handleDeleteMe(del("/me", { authorization: `Bearer ${bearerToken}` }), env, cors(env), undefined, factory);
+    expect((db.user as { id: string }[]).map((u) => u.id)).toEqual([other.id]);
+  });
+
+  it.each([
+    ["no token", {}, 401],
+    ["a made-up token", { authorization: "Bearer not-a-real-token.signature" }, 401],
+  ])("with %s it deletes nothing (%i)", async (_n, headers, status) => {
+    const { env, factory, db } = await memoryAuth();
+    const res = await handleDeleteMe(del("/me", headers), env, cors(env), undefined, factory);
+    expect(res.status).toBe(status);
+    expect(db.user).toHaveLength(1);
+  });
+
+  it("is refused from another website, and answers 503 until accounts are configured", async () => {
+    const { env, factory, bearerToken, db } = await memoryAuth();
+    expect((await handleDeleteMe(req("/me", { method: "DELETE", headers: { origin: "https://evil.example", authorization: `Bearer ${bearerToken}` } }), env, {}, undefined, factory)).status).toBe(403);
+    expect((await handleDeleteMe(del("/me", { authorization: `Bearer ${bearerToken}` }), testEnv(), {}, undefined, factory)).status).toBe(503);
+    expect(db.user).toHaveLength(1);
+  });
+
+  it(`is limited to ${DELETE_PER_HOUR} attempts an hour per visitor`, async () => {
+    const { env, factory } = await memoryAuth();
+    const call = (ip: string) => handleDeleteMe(del("/me", { authorization: "Bearer made-up.token", "cf-connecting-ip": ip }), env, cors(env), undefined, factory, NOW);
+    for (let i = 0; i < DELETE_PER_HOUR; i++) expect((await call("9.9.9.9")).status).toBe(401);
+    expect((await call("9.9.9.9")).status).toBe(429);
+    expect((await call("8.8.8.8")).status).toBe(401); // someone else is not affected
+  });
+
+  it("the log says only that an account was deleted: no id, no email", async () => {
+    const spy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const { env, factory, user, bearerToken } = await memoryAuth();
+    await handleDeleteMe(del("/me", { authorization: `Bearer ${bearerToken}` }), env, cors(env), undefined, factory);
+    const logged = spy.mock.calls.flat().join(" ");
+    spy.mockRestore();
+    expect(logged).toContain("deleted");
+    expect(logged).not.toContain(user.id);
+    expect(logged).not.toContain("member@example.com");
+  });
+});
+
+describe("the sign-in limit", () => {
+  it(`allows ${SIGN_IN_PER_HOUR} sign-in attempts an hour per visitor, then 429, and another visitor is unaffected`, async () => {
+    const env = accountEnv();
+    let reached = 0;
+    const stub: AuthFactory = () => ({
+      auth: { handler: async () => ((reached += 1), new Response("{}", { status: 200 })), api: { getSession: async () => null }, $context: Promise.resolve({ internalAdapter: { deleteUser: async () => undefined } }) },
+      close: async () => undefined,
+    });
+    const signIn = (ip: string) =>
+      handleAuthRoute(req("/api/auth/sign-in/social", { method: "POST", headers: { "content-type": "application/json", "cf-connecting-ip": ip }, body: JSON.stringify({ provider: "google", idToken: { token: "x".repeat(40) } }) }), env, cors(env), undefined, stub, NOW);
+    for (let i = 0; i < SIGN_IN_PER_HOUR; i++) expect((await signIn("7.7.7.7")).status).toBe(200);
+    const over = await signIn("7.7.7.7");
+    expect([over.status, ((await over.json()) as { error: string }).error]).toEqual([429, "rate_limited"]);
+    expect(reached).toBe(SIGN_IN_PER_HOUR); // the limited attempt never reached the library or the database
+    expect((await signIn("6.6.6.6")).status).toBe(200);
   });
 });
 
