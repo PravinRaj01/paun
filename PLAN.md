@@ -393,6 +393,69 @@ UI. No DB needed. Reuse `normPurity()` legacy mapping.
 - **Needs from the owner:** a Gemini API key (Google AI Studio); a Turnstile widget (site key + secret) from the Cloudflare dashboard; 3-5 sample receipt/hallmark photos with personal
   details covered; approval before any Cloudflare resource is created (KV namespace for the daily cap, rate-limit binding) and before deploying.
 
+### 4b. Optional accounts + Vault sync (spec drafted 2026-10-08, owner decisions recorded; **awaiting approval before any build**)
+**What it is.** An optional "Sign in with Google" that keeps your Vault, preferences and watchlist in step across your devices. **Nothing requires it**: signed out, the app works exactly as today.
+
+**Decisions (owner, 2026-10-08)**
+- **First sign-in merges both sides:** pieces on this device and pieces already in the account are all kept; the same piece (same id) is never duplicated. Nothing is ever lost.
+- **Google first, email link later:** launch with "Continue with Google" only. The email sign-in link waits until the owner has a domain (workers.dev cannot send email).
+- **What syncs:** the Vault, the preferences (language, display currency, decimals, price basis, simple/pro mode, theme) and the country watchlist (rates, duties, taxes). **Never synced:** the GoldAPI key, the Gemini key, the price source and spot price, the calculator's scratch state, a pending scan review.
+
+**Principles**
+1. **Local first.** LocalStorage stays the working copy on every device; the app never waits on the network. Sync is additive and runs in the background.
+2. **Keys never leave the device** (GoldAPI, Gemini). A test checks the exact set of fields in a sync request.
+3. **The browser never talks to the database.** Only the `paun-api` Worker does, and every query is filtered by the signed-in user's id.
+4. **Self-serve deletion.** "Delete my account and all synced data" removes every row; signing out keeps the data on the device.
+5. Times shown (for example "Synced 3 min ago, 11:34 GMT+8") follow standing constraint 11.
+
+**Stack (constraint 9)**: Neon Postgres + the `paun-api` Worker, with **Better Auth 1.7.7 (pinned) running inside the Worker** and its tables in Neon.
+**Decision made in 4b.2 (2026-10-08): self-hosted Better Auth, not Neon's managed Neon Auth.** Reasons from the docs: the managed service keeps its session cookie on Neon's own domain (the same third-party-cookie problem described below), registers Neon's callback URLs with Google instead of ours, hands out 15-minute tokens that need refreshing, and its Cloudflare Workers support is not documented; Better Auth documents Workers support and runs where our other code already runs.
+
+**The cookie problem, and how the design avoids it.** `paun-web` and `paun-api` are different sites for browsers (`workers.dev` is on the public suffix list), so a login cookie set by the API would be a *third-party* cookie, which Safari and Chrome increasingly block. So: **no cookies and no redirects.**
+1. The page shows **Google's own "Sign in with Google" button** (Google Identity Services). Google hands the page a signed **ID token**.
+2. The page POSTs it to `POST /api/auth/sign-in/social` on the Worker. Better Auth verifies Google's signature and that the token was issued **for our client id**, then creates or finds the user and a session.
+3. The `bearer` plugin returns the session token in a `set-auth-token` response header. The page keeps it and sends `Authorization: Bearer ...` on later calls (`GET /me`, and later the sync calls). Sign-out is `POST /api/auth/sign-out`.
+Same-site cookies become an option only once `app.` and `api.` subdomains of one owned domain exist (4b.7). Token storage and expiry: the session lasts 30 days and refreshes daily; the app keeps the token in LocalStorage (decided in 4b.3, with the XSS trade-off written next to it).
+**Only four URLs are reachable** (`sign-in/social`, `get-session`, `sign-out`, and `/me`); every other endpoint the library offers answers 404 and sign-in accepts only a Google ID token. Google's own tokens are **encrypted at rest** in the `account` table.
+
+**Data (Neon, beyond the auth tables)**
+- `vault_items(user_id, id, name, weight, purity, paid_usd, date, updated_at, deleted_at)`, primary key `(user_id, id)`. `deleted_at` is a **tombstone**, so a piece removed on one device does not come back from another.
+- `user_prefs(user_id, prefs jsonb, watchlist jsonb, updated_at)`.
+- A server-assigned `version` per change drives "what changed since I last synced".
+
+**Sync protocol (the Worker, JSON over HTTPS, bearer token required)**
+- `GET /sync?since=<version>` returns items, tombstones and prefs changed after that version, plus the new version.
+- `POST /sync` sends this device's changes: upserts and tombstones with their `updatedAt`, and prefs if changed. The server answers with its merged state.
+- **Rules:** per piece, the newest `updatedAt` wins (pieces are only added or removed today, so real conflicts are rare); prefs and watchlist are whole-object, newest wins. **First sign-in:** the device pushes everything it has, pulls everything the account has, and the union is kept. `VaultItem` gains an optional `updatedAt`; pieces without one count as "old".
+- **Limits:** 2,000 pieces per account, 256 KB per request, a per-user rate limit, and `x-` headers never trusted.
+- Offline edits queue and sync when the connection returns. A visible status: "Synced just now", "Syncing…", "Offline: will sync later", or an error with a retry.
+
+**UI.** A small "Sign in" control in Settings (and the header on wide screens), with one plain sentence about what it does. Signed in: the account email, "Synced …" with the time and timezone, **Sync now**, **Sign out**, **Delete my account and all synced data** (with a confirmation that says what is removed). EN and BM.
+
+**Privacy.** Stored: the Google account id, email and name; Vault pieces; preferences and watchlist. **Not stored:** receipt photos, scan results, any key, browsing data. A **`/privacy` page** (EN/BM) says exactly this and how to delete it. Google's own help says an app that only asks for the basic sign-in details (name, email) does **not** need app verification; a privacy-policy link on the consent screen is still expected, so the page is part of 4b.6.
+
+**Phases** (each its own branch and PR, owner commits)
+| Phase | What | Owner does | Done when |
+|---|---|---|---|
+| 4b.1 | This spec | approves it | approved |
+| 4b.2 | **Spike and foundations** | done by the assistant; owner adds the two JavaScript origins in Google and tries the test page | ✅ built on `feat/auth-spike` (372 tests): the decision above; `workers/paun-api/src/auth.ts` + `accounts.ts`; the four auth tables applied to the Neon project through a repeatable runner (`workers/paun-api/migrations/`, `bun workers/paun-api/migrations/run.ts`); the routes `/api/auth/*` and `/me`; real-library tests with a signed session (valid, tampered, signed out, closed connection, hidden routes). **Proven locally on the real Neon database from inside the Workers runtime:** a valid bearer token returns the account (200), a tampered one is refused (401), an unlisted route is 404, and the test data was deleted. **Not yet proven:** a real Google sign-in. A temporary page, `/auth-test`, is there for that (removed in 4b.3); the owner tries it after the merge and deploy |
+| 4b.3 | Sign in, sign out, `/me`, **delete account**; the Settings UI | tries it on the live site | you can sign in with Google on the deployed app and delete the account |
+| 4b.4 | **Vault sync**: tombstones, first-sign-in merge, offline queue, status line; tests with two simulated devices | tries two browsers | a piece added on one browser appears on the other, and a removed piece stays removed |
+| 4b.5 | Preferences and watchlist sync | | language, currency and watchlist follow you |
+| 4b.6 | `/privacy` page and publishing the Google consent screen to production (**may need an owned domain**, see the risk below) | enters the app name, support email and the privacy URL in Google Cloud | anyone with a Google account can sign in |
+| 4b.7 | *Later, when a domain exists:* email sign-in link through Resend (free: 3,000 emails a month, 100 a day, one verified domain), and `app.` / `api.` subdomains | buys or points a domain; makes a Resend account | email link works |
+
+**Tests (all phases).** Auth flow against a mocked Google; token expiry; sync merge (union, tombstone beats an older upsert, newest wins, idempotent repeat); a two-device simulation; deletion removes every row; the request-field whitelist (no key can be sent); per-user rate limit and size caps; and a real-browser check with a real Google sign-in on the live site.
+
+**Risks to watch.** Neon's free database sleeps when idle (the first request after a pause can take about a second: the UI must never block on it); the managed-auth route may be limited to certain regions (it is AWS-only per Neon's docs); a pinned auth-library version needs deliberate upgrades; Google's "Testing" mode limits a consent screen to listed test users (up to 100) and short-lived grants, so production publishing (4b.6) matters before real users. **Open question to verify in 4b.6:** Google's consent screen wants the privacy-policy page on an *authorized domain* the publisher owns, and `workers.dev` is a shared suffix nobody can verify. If so, going public needs a domain of the owner's (about US$10 to 15 a year), which then also unlocks the email link and `app.` / `api.` URLs (4b.7). Until then Testing mode is enough to build and use it yourself.
+
+**Needs from the owner (before 4b.2):**
+- ✅ **Neon project created 2026-10-08** from the owner's logged-in Neon CLI: name `paun`, id `frosty-bird-18651199`, region `aws-ap-southeast-1` (Singapore, next to the owner's other projects), Postgres 18, default branch `main`, database `neondb`, role `neondb_owner`, free plan. The connection string is **never printed or committed**: the owner pipes it straight into a Worker secret, `bunx neonctl connection-string --project-id frosty-bird-18651199 --database-name neondb --role-name neondb_owner --pooled | bunx wrangler secret put DATABASE_URL -c workers/paun-api/wrangler.jsonc`.
+- ✅ **Google OAuth client created** (client id `745030658975-4nlu1tjvdqb9ga7u0oralmf2mpqskchc.apps.googleusercontent.com`, public; it is in `workers/paun-api/wrangler.jsonc`). Its secret, `DATABASE_URL` and `BETTER_AUTH_SECRET` are set as Worker secrets (checked by name on 2026-10-08).
+- 🟡 **Authorized JavaScript origins on that Google client** (needed because sign-in now uses Google's browser button, not a redirect): `http://localhost:8080` and `https://paun-web.paun-gold.workers.dev`. The redirect URIs registered earlier are harmless and no longer used.
+- ✅ **Auth secret** set.
+- No domain is needed for the first five phases, **but see the risk below for 4b.6**.
+
 ### 2. Price Alert & Push Notification System
 Threshold alerts ("Gold 916 fell below RM 390/g"), arbitrage spread triggers ("Dubai–Malaysia
 spread > 7.5% net"), weekly wrap (high/low + portfolio summary). Cloudflare Worker cron every
@@ -456,7 +519,7 @@ The `data` branch stays for the daily bot commits (keeps `main` history clean) �
 | 3 | 3C DCA Backtester (real 5-year history is already in the snapshot) | ✅ done 2026-10-07 (PR #3): engine `src/lib/dca.ts` with 23 hand-checked tests, page `/dca` (EN/BM) with a dock icon, checked in a real browser at desktop, 390 px and 360 px; live on the Worker |
 | **3b** *(new)* | **Live price**: shared near-live feed for the landing page (`paun-api /spot`, Yahoo + budgeted GoldAPI backup), a one-time "add your own key" pop-up inside the app, and **price honesty** (no invented trend, plain-language copy) | 🟡 spec rewritten 2026-10-07 (section 3B) for the 100-requests-a-month limit. Run as numbered phases 3b.1 to 3b.6 (table in section 3B): 3b.1 price honesty ✅ merged (PR #5); **3b.2 timezone labels built** (branch `feat/dates-with-timezone`, PR pending); then the Worker skeleton, the Yahoo-from-Cloudflare test, `/spot`, and the landing page. The scanner reuses the same Worker later |
 | 4 | 3D Receipt/Hallmark Scanner — first use of `paun-api` (needs the owner's Gemini key and a Turnstile widget) | 🟡 spec approved 2026-10-07 (section 3D). Phases 4.1 to 4.5: 4.1 ✅, 4.2 built (`/scan` against a mocked Gemini), 4.2 to 4.4 done, 4.3 front end built; next 4.6 (Beta tag, honest privacy line, optional own Gemini key) before sharing it with other people |
-| **4b** *(new)* | **Optional accounts + Vault sync** (owner decision 2026-10-08): sign in with **Google** or an **email link** (no passwords); signing in syncs the Vault and settings across devices; **everything still works without signing in**; keys (GoldAPI, Gemini) are never synced | 📝 idea, spec to be written and approved before any build. Stack: auth on `paun-api` + Neon Postgres (library to be chosen and verified at spec time, e.g. Better Auth), email via Resend's free tier. **Needs from the owner:** a Neon account; a Google Cloud OAuth client; a Resend account; **a domain you control for sending email** (workers.dev cannot send email, so until then start with Google only); a short privacy-policy page (Google's consent screen requires one). Alerts (item 5) need accounts, so this comes first |
+| **4b** *(new)* | **Optional accounts + Vault sync** (owner decisions 2026-10-08): Google sign-in (email link later, with a domain); signing in keeps the Vault, preferences and watchlist in step across devices; **everything still works without signing in**; keys are never synced | 🟡 spec written 2026-10-08 (section 4b) with owner decisions; **awaiting approval**. Phases 4b.1 to 4b.7; the first six need no domain. **Needs from the owner:** a free Neon account and project, and a Google Cloud OAuth client. Alerts (item 5) need accounts, so this comes first |
 | 5 | 2 Notifications + 3E Street rates on `paun-api` + Neon (needs the owner's Neon account) | depends on 4b (alerts need accounts) |
 | **6** *(moved from 2b)* | ML-B pretrained-forecaster benchmark — research only, never ships | |
 | later | ML-4 TFT challenger; parked ideas | |

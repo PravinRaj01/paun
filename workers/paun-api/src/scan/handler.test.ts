@@ -246,7 +246,7 @@ describe("privacy", () => {
     const pre = await handle(new Request("https://x/scan", { method: "OPTIONS", headers: { origin: ORIGIN } }), env, NOW);
     expect(pre.status).toBe(204);
     expect(pre.headers.get("access-control-allow-methods")).toContain("POST");
-    expect(pre.headers.get("access-control-allow-headers")).toBe("content-type, x-gemini-key");
+    expect(pre.headers.get("access-control-allow-headers")).toBe("content-type, x-gemini-key, authorization");
   });
 });
 
@@ -336,6 +336,6 @@ describe("the visitor's own Gemini key (x-gemini-key)", () => {
 
   it("the browser's permission check allows the header", async () => {
     const pre = await handle(new Request("https://x/scan", { method: "OPTIONS", headers: { origin: ORIGIN } }), configured(), NOW);
-    expect(pre.headers.get("access-control-allow-headers")).toBe("content-type, x-gemini-key");
+    expect(pre.headers.get("access-control-allow-headers")).toBe("content-type, x-gemini-key, authorization");
   });
 });

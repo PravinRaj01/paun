@@ -8,6 +8,8 @@
 
   // Pinned on purpose, like the web Worker: bump it deliberately after testing.
   "compatibility_date": "2026-10-06",
+  // Better Auth (accounts) uses AsyncLocalStorage and Node-style crypto, which this flag provides.
+  "compatibility_flags": ["nodejs_compat"],
 
   // Refresh the shared gold price every 15 minutes, Monday to Friday (UTC). Gold futures trade from Sunday evening to Friday
   // evening, so this covers the market; at weekends the last price simply stays. Triggers run on UTC.
@@ -30,6 +32,12 @@
     // At most this many scans a day for everyone (each costs a fraction of a cent), and this many per visitor per hour.
     "SCAN_DAILY_CAP": "200",
     "SCAN_PER_VISITOR_HOUR": "10",
+
+    // Optional accounts (PLAN.md 4b). The Google client id is public (the page needs it too); the secrets DATABASE_URL,
+    // BETTER_AUTH_SECRET and GOOGLE_CLIENT_SECRET are set with `wrangler secret put` and never written here.
+    "GOOGLE_CLIENT_ID": "745030658975-4nlu1tjvdqb9ga7u0oralmf2mpqskchc.apps.googleusercontent.com",
+    // The public address of this Worker; the library builds its own URLs from it. Local runs override it (see docs/deploy.md).
+    "BETTER_AUTH_URL": "https://paun-api.paun-gold.workers.dev",
   },
 
   // Logs show status codes and timings only; nothing here logs a request body (the scanner's photos must never be logged).
