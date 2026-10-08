@@ -1,4 +1,4 @@
-import { handleAuthRoute, handleMe } from "./accounts";
+import { handleAuthRoute, handleDeleteMe, handleMe } from "./accounts";
 import { corsHeaders } from "./cors";
 import type { Env, ExecutionContextLike, ScheduledEventLike } from "./env";
 import { json } from "./http";
@@ -10,7 +10,7 @@ import { readSpot, refreshSpot } from "./spot";
  * deployed on its own, so a backend change never redeploys the site and the site never holds a backend secret.
  *
  * Endpoints: GET /health, GET /spot (the shared near-live price, from KV only), POST /scan (the receipt scanner),
- * /api/auth/* and GET /me (optional accounts, PLAN.md 4b).
+ * /api/auth/* and /me (optional accounts, PLAN.md 4b).
  * Scheduled: the price refresh, weekdays every 15 minutes (see wrangler.jsonc).
  */
 export async function handle(
@@ -29,7 +29,7 @@ export async function handle(
       status: 204,
       headers: {
         ...cors,
-        "access-control-allow-methods": "GET, POST, OPTIONS",
+        "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
         "access-control-allow-headers": "content-type, x-gemini-key, authorization",
         "access-control-max-age": "86400",
       },
@@ -37,7 +37,8 @@ export async function handle(
   }
   if (url.pathname.startsWith("/api/auth/")) return handleAuthRoute(request, env, cors, ctx);
   if (url.pathname === "/me") {
-    if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405, { ...cors, allow: "GET, OPTIONS" });
+    if (request.method === "DELETE") return handleDeleteMe(request, env, cors, ctx, undefined, now);
+    if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405, { ...cors, allow: "GET, DELETE, OPTIONS" });
     return handleMe(request, env, cors, ctx);
   }
   if (url.pathname === "/scan") {

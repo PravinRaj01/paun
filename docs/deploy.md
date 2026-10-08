@@ -111,7 +111,7 @@ One-time setup, by you (never paste a secret into chat, a file or a commit):
    applies the numbered files in `workers/paun-api/migrations/` once each (safe to re-run). Add changes as new numbered files; never edit an applied one.
 
 Until all of these exist the account routes answer `503 accounts_not_configured`; nothing else is affected.
-**Try it** (temporary page): open `/auth-test` on the live app (or `bun run dev`, then `http://localhost:8080/auth-test`), press the Google button, and the page prints your account id and email; **Sign out** then proves the old token is refused.
+**Try it:** open the app with `?accounts=1` once (for example `https://paun-web.paun-gold.workers.dev/vault?accounts=1`), open **Settings**, and use the **Account (optional, preview)** block: Sign in with Google, then Sign out, then **Delete my account** (this really deletes it). `?accounts=0` hides the block again. The block stays hidden for everyone else until Vault sync ships (phase 4b.4).
 Running the Worker locally against the real database needs the secrets and `BETTER_AUTH_URL=http://127.0.0.1:8788`: pass them as `--var NAME:value` to `wrangler dev`, or put them in the git-ignored `.dev.vars`.
 
 ## Custom domain

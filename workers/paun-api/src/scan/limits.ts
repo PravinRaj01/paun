@@ -1,4 +1,5 @@
 import type { Env, KvLike } from "../env";
+import { visitorId } from "../rate";
 
 /**
  * Who may scan, and how much. Two caps, both kept in KV:
@@ -20,12 +21,6 @@ const count = async (kv: KvLike, key: string) => {
   const n = Number(await kv.get(key));
   return Number.isFinite(n) && n > 0 ? n : 0;
 };
-
-async function visitorId(ip: string | null): Promise<string> {
-  const bytes = new TextEncoder().encode(`paun-scan|${ip ?? "unknown"}`);
-  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
-  return Array.from(digest.slice(0, 8), (b) => b.toString(16).padStart(2, "0")).join("");
-}
 
 const dayKey = (now: Date) => `scan:day:${now.toISOString().slice(0, 10)}`;
 const hourKey = (id: string, now: Date) => `scan:ip:${id}:${now.toISOString().slice(0, 13)}`;

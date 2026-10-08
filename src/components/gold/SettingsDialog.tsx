@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useGold } from "@/lib/gold-store";
 import { fetchLiveSpot } from "@/lib/gold";
 import { isPlausibleGeminiKey, readGeminiKey, setGeminiKey, type GeminiKeyMode } from "@/lib/gemini-key";
+import { AccountSection } from "@/components/gold/AccountSection";
 import { useI18n } from "@/lib/i18n";
 
 export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
@@ -142,6 +143,7 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
             <p className="text-xs text-muted-foreground">{t("geminiKeyHint")}</p>
             <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="text-xs text-gold underline">{t("geminiKeyGet")}</a>
           </div>
+          <AccountSection />
           <div className="space-y-2">
             <Label htmlFor="dec">{t("decimals")}</Label>
             <Input id="dec" className="num" type="number" min={0} max={4} value={decimals} onChange={(e) => setDecimals(e.target.value)} />
