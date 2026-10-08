@@ -41,7 +41,7 @@ export type Trade = {
   deduction?: number; // % susut on sell / trade-in
 };
 
-export type VaultItem = { id: string; name: string; weight: number; purity: PurityId; paidUsd: number; date: string };
+export type VaultItem = { id: string; name: string; weight: number; purity: PurityId; paidUsd: number; date: string; updatedAt?: string };
 
 /** Fair cash for selling gold back: pure metal at spot, minus susut %, minus melting/assay. */
 export function sellQuote(trade: Trade, spotUsdOz: number) {

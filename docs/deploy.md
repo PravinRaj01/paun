@@ -111,6 +111,8 @@ One-time setup, by you (never paste a secret into chat, a file or a commit):
    applies the numbered files in `workers/paun-api/migrations/` once each (safe to re-run). Add changes as new numbered files; never edit an applied one.
 
 Until all of these exist the account routes answer `503 accounts_not_configured`; nothing else is affected.
+**Vault sync (phase 4b.4):** once signed in, the app keeps the Vault in step across devices through `POST /sync` (the table is migration `002_vault.sql`; apply it with the migration runner above, which has already been done for the Neon project). Deleting the account deletes its synced pieces too (`on delete cascade`). At most 2,000 pieces per account.
+
 **Try it:** open the app with `?accounts=1` once (for example `https://paun-web.paun-gold.workers.dev/vault?accounts=1`), open **Settings**, and use the **Account (optional, preview)** block: Sign in with Google, then Sign out, then **Delete my account** (this really deletes it). `?accounts=0` hides the block again. The block stays hidden for everyone else until Vault sync ships (phase 4b.4).
 Running the Worker locally against the real database needs the secrets and `BETTER_AUTH_URL=http://127.0.0.1:8788`: pass them as `--var NAME:value` to `wrangler dev`, or put them in the git-ignored `.dev.vars`.
 

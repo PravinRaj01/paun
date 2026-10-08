@@ -27,7 +27,7 @@ export const DELETE_PER_HOUR = 5;
 /** The browser may read the session token the bearer plugin returns in this header. */
 const withExposed = (cors: Record<string, string>) => ({ ...cors, "access-control-expose-headers": "set-auth-token" });
 
-async function withAuth<T>(env: Env, ctx: ExecutionContextLike | undefined, factory: AuthFactory, run: (h: ReturnType<AuthFactory>) => Promise<T>): Promise<T> {
+export async function withAuth<T>(env: Env, ctx: ExecutionContextLike | undefined, factory: AuthFactory, run: (h: ReturnType<AuthFactory>) => Promise<T>): Promise<T> {
   const handle = factory(env);
   try {
     return await run(handle);
