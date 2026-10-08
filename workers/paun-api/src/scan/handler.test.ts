@@ -246,6 +246,96 @@ describe("privacy", () => {
     const pre = await handle(new Request("https://x/scan", { method: "OPTIONS", headers: { origin: ORIGIN } }), env, NOW);
     expect(pre.status).toBe(204);
     expect(pre.headers.get("access-control-allow-methods")).toContain("POST");
-    expect(pre.headers.get("access-control-allow-headers")).toBe("content-type");
+    expect(pre.headers.get("access-control-allow-headers")).toBe("content-type, x-gemini-key");
+  });
+});
+
+describe("the visitor's own Gemini key (x-gemini-key)", () => {
+  const OWN = "AIzaSyOwnKeyForTesting_1234567890abcd";
+  const withKey = (extra: Record<string, string> = {}) => ({ origin: ORIGIN, "cf-connecting-ip": "203.0.113.7", "x-gemini-key": OWN, ...extra });
+  const ok = () => fakeFetch({ turnstile: turnstileOk, gemini: gemini() });
+
+  it("is used for Google instead of Paun's key, and the answer is the same", async () => {
+    const f = ok();
+    const { res, json } = await post(configured(), f, undefined, withKey());
+    expect(res.status).toBe(200);
+    expect(json).toMatchObject({ ok: true, readable: true });
+    const call = f.calls.find((c) => c.host.includes("generativelanguage"))!;
+    expect(call.headers.get("x-goog-api-key")).toBe(OWN);
+    expect(call.headers.get("x-goog-api-key")).not.toBe("g-key-123");
+    expect(call.url).not.toContain(OWN);
+  });
+
+  it("makes the scanner work even when Paun's own key is not configured; without it the scanner stays off", async () => {
+    const onlyTurnstile = () => testEnv({ TURNSTILE_SECRET: "t-secret-456" });
+    expect((await post(onlyTurnstile(), ok(), undefined, withKey())).res.status).toBe(200);
+    const none = await post(onlyTurnstile(), fakeFetch({}));
+    expect([none.res.status, none.json["error"]]).toEqual([503, "scanner_not_configured"]);
+  });
+
+  it("skips Paun's shared daily cap (and does not count against it), but keeps the per-visitor hourly limit", async () => {
+    const env = testEnv({ GEMINI_API_KEY: "g", TURNSTILE_SECRET: "t", SCAN_DAILY_CAP: "1", SCAN_PER_VISITOR_HOUR: "3" });
+    const f = ok();
+    const other = (ip: string) => ({ origin: ORIGIN, "cf-connecting-ip": ip });
+    expect((await post(env, f, undefined, other("1.1.1.1"))).res.status).toBe(200); // uses the whole shared cap
+    expect((await post(env, f, undefined, other("2.2.2.2"))).json["error"]).toBe("scanner_busy");
+    expect((await post(env, f, undefined, withKey({ "cf-connecting-ip": "2.2.2.2" }))).res.status).toBe(200); // own key: still allowed
+    expect(env.SPOT.data.get("scan:day:2026-10-08")).toBe("1"); // and it did not use up the shared count
+    // the hourly limit still applies to own-key scans
+    await post(env, f, undefined, withKey({ "cf-connecting-ip": "3.3.3.3" }));
+    await post(env, f, undefined, withKey({ "cf-connecting-ip": "3.3.3.3" }));
+    await post(env, f, undefined, withKey({ "cf-connecting-ip": "3.3.3.3" }));
+    const fourth = await post(env, f, undefined, withKey({ "cf-connecting-ip": "3.3.3.3" }));
+    expect([fourth.res.status, fourth.json["error"]]).toEqual([429, "rate_limited"]);
+  });
+
+  it.each(["short", "has spaces in it which is not a key at all", "bad*chars*in*the*key*1234567890", "x".repeat(300)])(
+    "refuses a malformed key (%s) before anything is called",
+    async (bad) => {
+      const f = fakeFetch({});
+      const { res, json } = await post(configured(), f, undefined, withKey({ "x-gemini-key": bad }));
+      expect([res.status, json["error"], json["field"]]).toEqual([400, "invalid_request", "geminiKey"]);
+      expect(f.calls).toHaveLength(0);
+    },
+  );
+
+  it.each([[400], [401], [403]])("Google answering %i to the visitor's key is reported as user_key_rejected (422)", async (status) => {
+    const f = fakeFetch({ turnstile: turnstileOk, gemini: () => new Response("{}", { status }) });
+    const { res, json } = await post(configured(), f, undefined, withKey());
+    expect([res.status, json["error"]]).toEqual([422, "user_key_rejected"]);
+  });
+
+  it("Google answering 429 is user_key_quota (429); other failures stay a generic 502", async () => {
+    const quota = fakeFetch({ turnstile: turnstileOk, gemini: () => new Response("{}", { status: 429 }) });
+    expect(await post(configured(), quota, undefined, withKey()).then((r) => [r.res.status, r.json["error"]])).toEqual([429, "user_key_quota"]);
+    const boom = fakeFetch({ turnstile: turnstileOk, gemini: () => new Response("{}", { status: 500 }) });
+    expect(await post(configured(), boom, undefined, withKey()).then((r) => [r.res.status, r.json["error"]])).toEqual([502, "scanner_unavailable"]);
+  });
+
+  it("the same Google errors with PAUN's key are never blamed on the visitor", async () => {
+    for (const status of [400, 401, 403, 429]) {
+      const f = fakeFetch({ turnstile: turnstileOk, gemini: () => new Response("{}", { status }) });
+      const { res, json } = await post(configured(), f);
+      expect([res.status, json["error"]]).toEqual([502, "scanner_unavailable"]);
+    }
+  });
+
+  it("the key never appears in a log line or in any response, success or failure", async () => {
+    const spy = vi.mocked(console.log);
+    const bodies: string[] = [];
+    for (const gem of [gemini(), () => new Response("{}", { status: 403 }), () => new Response("{}", { status: 429 }), () => new Response("{}", { status: 500 })]) {
+      const { res } = await post(configured(), fakeFetch({ turnstile: turnstileOk, gemini: gem }), undefined, withKey()).then(async (r) => ({ res: r.json }));
+      bodies.push(JSON.stringify(res));
+    }
+    const logged = spy.mock.calls.flat().join("\n");
+    expect(logged).toContain("own key");
+    expect(logged).not.toContain(OWN);
+    expect(logged).not.toContain("AIzaSy");
+    expect(bodies.join("\n")).not.toContain(OWN);
+  });
+
+  it("the browser's permission check allows the header", async () => {
+    const pre = await handle(new Request("https://x/scan", { method: "OPTIONS", headers: { origin: ORIGIN } }), configured(), NOW);
+    expect(pre.headers.get("access-control-allow-headers")).toBe("content-type, x-gemini-key");
   });
 });

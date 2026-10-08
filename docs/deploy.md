@@ -95,6 +95,8 @@ To test locally without the real widget, run the Worker (`bun run dev:api`, with
 Locally: put dummy values in `workers/paun-api/.dev.vars` (git-ignored), for example `TURNSTILE_SECRET=1x0000000000000000000000000000000AA` (Cloudflare's always-pass test secret)
 and a fake `GEMINI_API_KEY`, then `bun run dev:api`. Logs for this endpoint hold a status word and a timing only; never the photo, a token, a key, or anything the model read.
 
+A visitor can also use **their own Gemini key** (Settings, kept only in their browser). The page sends it in an `x-gemini-key` header; the Worker uses it for that one request instead of `GEMINI_API_KEY`, skips only the shared daily cap, and never stores or logs it (a test checks the logs). Google refusing the key shows the visitor a message that names the key.
+
 ## Custom domain
 
 Add the domain to your Cloudflare account, then uncomment `routes` in `wrangler.jsonc` (or add it under Workers -> Settings -> Domains).

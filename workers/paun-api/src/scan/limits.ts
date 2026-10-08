@@ -32,16 +32,20 @@ const hourKey = (id: string, now: Date) => `scan:ip:${id}:${now.toISOString().sl
 
 export type LimitCheck = { ok: true; reserve: () => Promise<void> } | { ok: false; reason: "scanner_busy" | "rate_limited" };
 
-export async function checkScanLimits(env: LimitEnv, ip: string | null, now: Date): Promise<LimitCheck> {
+/**
+ * `ownKey`: the visitor pays for the scan with their own Gemini key, so it costs Paun nothing: it neither counts against, nor is
+ * refused by, the shared daily cap. The per-visitor hourly limit still applies (it protects the Worker and Turnstile, not the bill).
+ */
+export async function checkScanLimits(env: LimitEnv, ip: string | null, now: Date, ownKey = false): Promise<LimitCheck> {
   const id = await visitorId(ip);
   const day = await count(env.SPOT, dayKey(now));
   const hour = await count(env.SPOT, hourKey(id, now));
-  if (day >= limit(env.SCAN_DAILY_CAP, DEFAULT_DAILY_CAP)) return { ok: false, reason: "scanner_busy" };
+  if (!ownKey && day >= limit(env.SCAN_DAILY_CAP, DEFAULT_DAILY_CAP)) return { ok: false, reason: "scanner_busy" };
   if (hour >= limit(env.SCAN_PER_VISITOR_HOUR, DEFAULT_PER_VISITOR_HOUR)) return { ok: false, reason: "rate_limited" };
   return {
     ok: true,
     reserve: async () => {
-      await env.SPOT.put(dayKey(now), String(day + 1), { expirationTtl: 3 * 86_400 });
+      if (!ownKey) await env.SPOT.put(dayKey(now), String(day + 1), { expirationTtl: 3 * 86_400 });
       await env.SPOT.put(hourKey(id, now), String(hour + 1), { expirationTtl: 2 * 3600 });
     },
   };

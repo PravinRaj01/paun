@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useGold } from "@/lib/gold-store";
 import { fetchLiveSpot } from "@/lib/gold";
+import { isPlausibleGeminiKey, readGeminiKey, setGeminiKey, type GeminiKeyMode } from "@/lib/gemini-key";
 import { useI18n } from "@/lib/i18n";
 
 export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
@@ -18,6 +19,9 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
   const [baseRate, setBaseRate] = useState(String(settings.baseRate || 1));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // the optional scanner key lives outside Settings (src/lib/gemini-key.ts) and is only applied when Save is pressed
+  const [gKey, setGKey] = useState("");
+  const [gMode, setGMode] = useState<GeminiKeyMode>("device");
   const { t } = useI18n();
 
   const currencies = ["USD", ...Array.from(new Set(countries.map((c) => c.currency).filter((c) => c !== "USD")))];
@@ -30,6 +34,9 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
       setDecimals(String(settings.decimals));
       setBase(settings.baseCurrency);
       setBaseRate(String(settings.baseRate || 1));
+      const savedKey = readGeminiKey();
+      setGKey(savedKey?.key ?? "");
+      setGMode(savedKey?.mode ?? "device");
       setError("");
     }
   }, [open, settings]);
@@ -39,6 +46,8 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
     if (!v || v <= 0) return setError("Enter a valid spot price.");
     const r = Number(baseRate);
     if (needsManualRate && (!r || r <= 0)) return setError("Enter the exchange rate for the display currency.");
+    if (gKey.trim() && !isPlausibleGeminiKey(gKey)) return setError(t("geminiKeyInvalid"));
+    if (!setGeminiKey(gKey, gMode)) return setError(t("geminiKeyNotSaved"));
     setSettings((s) => ({
       ...s,
       spotUsdOz: v,
@@ -118,6 +127,20 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RadioTower className="h-4 w-4" />}
               {t("fetchLive")}
             </Button>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="gkey">{t("geminiKeyLabel")}</Label>
+            <Input id="gkey" type="password" autoComplete="off" placeholder="AIza…" value={gKey} onChange={(e) => setGKey(e.target.value)} />
+            <div className="space-y-1 text-xs">
+              {(["device", "session"] as const).map((m) => (
+                <label key={m} className="flex cursor-pointer items-center gap-2">
+                  <input type="radio" name="gmode" checked={gMode === m} onChange={() => setGMode(m)} />
+                  {t(m === "device" ? "geminiKeyDevice" : "geminiKeySession")}
+                </label>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">{t("geminiKeyHint")}</p>
+            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="text-xs text-gold underline">{t("geminiKeyGet")}</a>
           </div>
           <div className="space-y-2">
             <Label htmlFor="dec">{t("decimals")}</Label>

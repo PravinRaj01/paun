@@ -1,6 +1,7 @@
 import type React from "react";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { getSnapshot } from "./forecast/snapshot";
+import { clearGeminiKey } from "./gemini-key";
 import {
   hasDefaultSpot,
   DEFAULT_COUNTRIES,
@@ -104,6 +105,7 @@ export function GoldProvider({ children }: { children: ReactNode }) {
     });
 
   const resetAll = () => {
+    clearGeminiKey(); // the optional scanner key lives outside Settings, so reset must forget it too
     setSettings(DEFAULT_SETTINGS);
     setCountries(DEFAULT_COUNTRIES);
     setTrade(DEFAULT_TRADE);

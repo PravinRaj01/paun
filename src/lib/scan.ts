@@ -49,6 +49,8 @@ export const SCAN_ERROR_COPY: Record<string, CopyKey> = {
   turnstile_failed: "scanErrTurnstile",
   verification_unavailable: "scanErrTurnstile",
   too_large: "scanErrTooLarge",
+  user_key_rejected: "scanErrOwnKey",
+  user_key_quota: "scanErrOwnQuota",
   image_rejected: "scanErrRejected",
   network: "scanErrNetwork",
   decode: "scanErrDecode",
@@ -62,12 +64,14 @@ export async function requestScan(
   turnstileToken: string,
   fetchImpl: typeof fetch = fetch,
   url: string = SCAN_URL,
+  /** The visitor's own Gemini key, if they set one in Settings. Sent in a header, never in the body or the URL. */
+  geminiKey?: string | null,
 ): Promise<ScanResponse | ScanFailure> {
   let res: Response;
   try {
     res = await fetchImpl(url, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...(geminiKey ? { "x-gemini-key": geminiKey } : {}) },
       body: JSON.stringify({ image: imageBase64, mimeType, turnstileToken }),
       signal: AbortSignal.timeout(45_000),
     });

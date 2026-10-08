@@ -3,9 +3,23 @@ import { Camera, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Turnstile } from "@/components/gold/Turnstile";
-import { requestScan, scanErrorKey, type ScanResponse } from "@/lib/scan";
+import { getGeminiKey } from "@/lib/gemini-key";
+import { requestScan, scanErrorKey, SCAN_URL, type ScanResponse } from "@/lib/scan";
 import { resizeToJpegBase64 } from "@/lib/scan-image";
 import { useI18n, type CopyKey } from "@/lib/i18n";
+
+/** "Beta" tag shown wherever the scanner is offered, until it has been tried on enough real phone photos (PLAN.md 4.6a). */
+export function BetaBadge({ onPrimary = false }: { onPrimary?: boolean }) {
+  const { t } = useI18n();
+  return (
+    <span
+      title={t("scanBetaTip")}
+      className={`ml-2 inline-block rounded-full border px-1.5 py-px align-middle text-[10px] font-normal uppercase tracking-wider ${onPrimary ? "border-primary-foreground/50 text-primary-foreground" : "text-muted-foreground"}`}
+    >
+      {t("scanBeta")}
+    </span>
+  );
+}
 
 /**
  * "Scan receipt": pick or take a photo, shrink it in the browser, prove you are a person (Turnstile), send it to our Worker, and
@@ -22,17 +36,25 @@ export function ScanReceiptDialog({
   onRead: (result: ScanResponse) => void;
 }) {
   const { t } = useI18n();
+  // Which key reads the photo decides what the privacy line says. Read when the dialog opens (browser only: the dialog never renders on the server).
+  const [ownKey, setOwnKey] = useState(false);
+  useEffect(() => {
+    if (open) setOwnKey(getGeminiKey() !== null);
+  }, [open]);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t("scanTitle")}</DialogTitle>
+          <DialogTitle>
+            {t("scanTitle")}
+            <BetaBadge />
+          </DialogTitle>
           <DialogDescription>{t("scanIntro")}</DialogDescription>
         </DialogHeader>
         {/* mounted only while open, so every opening starts clean (no old photo, no old token) */}
         {open && <ScanBody onClose={() => onOpenChange(false)} onRead={onRead} />}
         <DialogFooter>
-          <p className="mr-auto text-[11px] leading-snug text-muted-foreground">{t("scanPrivacy")}</p>
+          <p className="mr-auto text-[11px] leading-snug text-muted-foreground">{t(ownKey ? "scanPrivacyOwn" : "scanPrivacyShared")}</p>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -82,7 +104,7 @@ function ScanBody({ onClose, onRead }: { onClose: () => void; onRead: (result: S
       setError("scanErrDecode");
       return;
     }
-    const res = await requestScan(image, "image/jpeg", token);
+    const res = await requestScan(image, "image/jpeg", token, fetch, SCAN_URL, getGeminiKey());
     setBusy(false);
     if (!res.ok) {
       setError(scanErrorKey(res.error));
