@@ -1,5 +1,9 @@
 # Paun — Unified Plan (master reference)
 
+> **Archived 2026-10-14. This is no longer the live plan; see [`PLAN.md`](../../PLAN.md).** It is kept unchanged because comments in the
+> code refer to its section numbers (for example "PLAN.md 4b.4" or "3b.5") and it holds the detail of the ML pipeline, live price feed,
+> receipt scanner and optional accounts.
+
 Last updated: 2026-10-06 · Owner: Pravin Raj
 Supersedes: `paun_upgrade_plan.md`, `paun_ml_architecture_plan.md`, the Gemini
 `gold_dual_model_pipeline-v2.py` draft, and the old Lovable plans (now in `docs/archive/lovable-plans/`, history only).
