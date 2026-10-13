@@ -2,7 +2,20 @@
 > Every push to `main` is built and deployed automatically by Cloudflare (Worker `paun-web`), so keep `main` working.
 > Do not force-push or rewrite history on shared branches. Automated data commits go only to the separate `data` branch.
 
-- All app state is client-side (React context + LocalStorage in src/lib/gold-store.tsx); no login or database is ever required. An optional sign-in with Vault sync is planned (PLAN.md item 4b); everything must keep working without it.
+## Direction (refocus of 2026-10-14; PLAN.md is the source of truth)
+
+- Paun serves four shopper jobs in RM, at home or at the jewellery counter: today's price, check a shop's quote, sell or trade-in check, my gold. A new feature must serve one of them or it goes to the More page. Do not add trader or tech-showcase features.
+- Grams are the headline unit. The name stays, but never quote a main figure per paun.
+- Board rate first: the shopper's own per-gram rate drives the answer; never present Paun's guess of a shop's mark-up as the "fair price". Upah is never recovered on resale. Susut is a percentage of the shop's selling price, or a posted buy-back rate per gram.
+- Malaysia has no sales tax on gold jewellery: no tax field for Malaysia. Singapore, UAE and India rules appear only in rough country estimates, and duty is never applied on upah.
+- Copy: one plain sentence plus the number; labels of one to three everyday words; one disclaimer per page; core-screen strings at most 20 words. Details in PLAN.md section 6.
+- Git: follow the SOP (issue, branch, small commits, push the feature branch, PR that closes the issue); the owner merges. No AI attribution in commits, issues or PRs.
+- Accounts and sync are merged and frozen behind `?accounts=1`; no new account work until the core is right (phases in PLAN.md).
+- Gold maths is being moved into one engine (phase 2, issue #27). Do not add new gold arithmetic inside components.
+
+## Rules
+
+- All app state is client-side (React context + LocalStorage in src/lib/gold-store.tsx); no login or database is ever required. The optional sign-in with Vault, preference and watchlist sync exists behind `?accounts=1`; everything must keep working without it.
 - PWA is manifest-only (public/manifest.webmanifest); no service worker, to avoid stale-cache risk with SSR.
 - Watchlist additions pick from the built-in catalog (src/lib/country-catalog.ts, indicative editable defaults) with a Custom-entry fallback.
 - All internal math is USD; only display converts via the base currency (settings.baseCurrency, rate from the watchlist or settings.baseRate). Trade fee/melting/asking inputs are entered in the base currency and stored as USD.
