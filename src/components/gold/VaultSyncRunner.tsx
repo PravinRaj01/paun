@@ -18,7 +18,7 @@ import { loadSyncState, newTombstones, runSync, saveSyncState, stampMissing, typ
 const DEBOUNCE_MS = 2500;
 
 export function VaultSyncRunner() {
-  const { vault, setVault, hydrated, settings, setSettings, countries, setCountries, excluded, setExcluded, theme, toggleTheme } = useGold();
+  const { vault, setVault, hydrated, settings, setSettings, rawCountries, setCountries, excluded, setExcluded, theme, toggleTheme } = useGold();
   const account = useAccount();
   const { t } = useI18n();
   const vaultRef = useRef(vault);
@@ -30,7 +30,7 @@ export function VaultSyncRunner() {
   const again = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // The preferences and watchlist that travel with the account, as they are right now (whitelisted fields only)
-  const local = useMemo(() => ({ prefs: pickPrefs(settings, theme), watchlist: sanitizeWatchlist(countries, excluded) }), [settings, theme, countries, excluded]);
+  const local = useMemo(() => ({ prefs: pickPrefs(settings, theme), watchlist: sanitizeWatchlist(rawCountries, excluded) }), [settings, theme, rawCountries, excluded]);
   const localKey = useMemo(() => canonicalJson(local), [local]);
   const localRef = useRef(local);
   localRef.current = local;

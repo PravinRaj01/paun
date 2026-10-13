@@ -7,9 +7,9 @@ export type CatalogEntry = Omit<{ id: string; name: string; currency: string; ra
 
 export const COUNTRY_CATALOG: CatalogEntry[] = [
   { name: "United States", currency: "USD", rate: 1, duty: 0, tax: 0 },
-  { name: "Malaysia", currency: "MYR", rate: 4.45, duty: 0, tax: 0 },
-  { name: "Singapore", currency: "SGD", rate: 1.35, duty: 0, tax: 0 },
-  { name: "India", currency: "INR", rate: 88, duty: 6, tax: 3 },
+  { name: "Malaysia", currency: "MYR", rate: 4.1, duty: 0, tax: 0 },
+  { name: "Singapore", currency: "SGD", rate: 1.28, duty: 0, tax: 9 },
+  { name: "India", currency: "INR", rate: 96, duty: 6, tax: 3 },
   { name: "UAE (Dubai)", currency: "AED", rate: 3.67, duty: 0, tax: 5 },
   { name: "Saudi Arabia", currency: "SAR", rate: 3.75, duty: 0, tax: 15 },
   { name: "Qatar", currency: "QAR", rate: 3.64, duty: 0, tax: 0 },

@@ -1,8 +1,9 @@
 import type React from "react";
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getSnapshot } from "./forecast/snapshot";
 import { clearGeminiKey } from "./gemini-key";
 import {
+  effectiveCountry,
   hasDefaultSpot,
   DEFAULT_COUNTRIES,
   DEFAULT_SETTINGS,
@@ -36,8 +37,13 @@ function usePersisted<T>(key: string, initial: T) {
 type Store = {
   settings: Settings;
   setSettings: (s: Settings | ((p: Settings) => Settings)) => void;
+  /** The watchlist as it should be READ: each rate is the market rate unless the person set their own. Never write this list back. */
   countries: Country[];
+  /** The watchlist exactly as saved (and as it is synced). Edit through setCountries; read it for anything that is saved or sent. */
+  rawCountries: Country[];
   setCountries: (c: Country[] | ((p: Country[]) => Country[])) => void;
+  /** Exchange rates (local units per USD) and the market date of the daily snapshot, once it has loaded. */
+  marketFx: { rates: Record<string, number>; asOf: string } | null;
   trade: Trade;
   setTrade: (t: Trade | ((p: Trade) => Trade)) => void;
   excluded: string[]; // country ids left out of the spread & arbitrage comparison
@@ -58,7 +64,12 @@ const Ctx = (g.__paunGoldCtx ??= createContext<Store | null>(null));
 export function GoldProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings, hydrated] = usePersisted("settings", DEFAULT_SETTINGS);
   const [priceUnavailable, setPriceUnavailable] = useState(false);
-  const [countries, setCountries] = usePersisted<Country[]>("countries", DEFAULT_COUNTRIES);
+  const [rawCountries, setCountries] = usePersisted<Country[]>("countries", DEFAULT_COUNTRIES);
+  const [marketFx, setMarketFx] = useState<{ rates: Record<string, number>; asOf: string } | null>(null);
+  const countries = useMemo(
+    () => rawCountries.map((c) => effectiveCountry(c, marketFx?.rates)),
+    [rawCountries, marketFx],
+  );
   const [trade, setTrade] = usePersisted("trade", DEFAULT_TRADE);
   const [excluded, setExcluded] = usePersisted<string[]>("excluded", []);
   const [vault, setVault] = usePersisted<VaultItem[]>("vault", []);
@@ -114,7 +125,7 @@ export function GoldProvider({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider
-      value={{ settings, setSettings, countries, setCountries, trade, setTrade, excluded, setExcluded, vault, setVault, hydrated, priceUnavailable, theme, toggleTheme, resetAll }}
+      value={{ settings, setSettings, countries, rawCountries, setCountries, marketFx, trade, setTrade, excluded, setExcluded, vault, setVault, hydrated, priceUnavailable, theme, toggleTheme, resetAll }}
     >
       {children}
     </Ctx.Provider>

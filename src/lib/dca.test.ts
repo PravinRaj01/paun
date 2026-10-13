@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { backtestDca, type DcaHistory, type DcaParams, type DcaResult } from "./dca";
-import { GRAMS_PER_OUNCE, analyze, type Country } from "./gold";
+import { GRAMS_PER_OUNCE, countryEstimate, type Country } from "./gold";
 
 /**
  * Hand-worked scenario. The gold price (USD per oz) is chosen so that the price per GRAM is exactly 100 x m:
@@ -133,7 +133,7 @@ describe("shop price versus raw price", () => {
     close(r.goldVsSavingsBase, 1710 - 1056.015);
   });
 
-  it("buying uses exactly the same all-in factors as the calculator (premium, duty, then tax)", () => {
+  it("buying uses exactly the same all-in factors as the country estimate (margin, duty, then tax)", () => {
     const shop: Country = {
       id: "s",
       name: "Shop",
@@ -151,20 +151,7 @@ describe("shop price versus raw price", () => {
       contribution: { mode: "grams", grams: 1 },
     });
     const june = r.purchases[0]!;
-    const expected = analyze(
-      {
-        weight: 1,
-        purity: "916",
-        feeMode: "flat",
-        fee: 0,
-        melting: 0,
-        askingPrice: 0,
-        countryId: "s",
-      },
-      shop,
-      june.xauUsd,
-      "retail",
-    ).totalUsd;
+    const expected = countryEstimate({ weight: 1, purity: "916", country: shop, usdPerOz: june.xauUsd, basis: "retail" }).totalUsd;
     close(june.costUsd, expected);
   });
 });

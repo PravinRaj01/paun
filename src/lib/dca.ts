@@ -1,9 +1,7 @@
 import {
-  DEFAULT_TRADE,
   GRAMS_PER_OUNCE,
   fineOf,
   landedPerGram,
-  sellQuote,
   type Basis,
   type Country,
   type PurityId,
@@ -170,19 +168,8 @@ export function backtestDca(history: DcaHistory, p: DcaParams): DcaResult | DcaE
   const totalPure = totalGrams * fine;
   const valueSpotUsd = totalPure * (end.xau / GRAMS_PER_OUNCE);
   const valueAtSpotBase = valueSpotUsd * end.fx;
-  const sellUsd =
-    p.basis === "retail"
-      ? sellQuote(
-          {
-            ...DEFAULT_TRADE,
-            weight: totalGrams,
-            purity: p.purity,
-            melting: 0,
-            deduction: p.deductionPct,
-          },
-          end.xau,
-        ).payout
-      : valueSpotUsd;
+  // on the shop-price basis the gold is sold back less the susut deduction; on the raw basis it is the metal value
+  const sellUsd = p.basis === "retail" ? valueSpotUsd * (1 - p.deductionPct / 100) : valueSpotUsd;
   const valueSellBackBase = sellUsd * end.fx;
   const savingsBase = savingsAt(purchases.length, endIdx);
   if (series[series.length - 1]!.date !== end.date) {
