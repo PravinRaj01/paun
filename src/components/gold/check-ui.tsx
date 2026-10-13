@@ -22,11 +22,13 @@ export function NumField({
   placeholder?: string;
   nullable?: boolean;
 }) {
-  const [text, setText] = useState(value === null || value === 0 ? "" : String(value));
+  // 0 means "not given" for a plain amount, but for a nullable field (susut) an explicit 0 is a real answer and must stay visible
+  const show = (v: number | null) => (v === null || (!nullable && v === 0) ? "" : String(v));
+  const [text, setText] = useState(show(value));
   // follow outside changes (a currency conversion, "Reset all") without fighting the person's typing
   useEffect(() => {
     const typed = text.trim() === "" ? (nullable ? null : 0) : Number(text);
-    if (typed !== value && !(Number.isNaN(typed) && value === null)) setText(value === null || value === 0 ? "" : String(value));
+    if (typed !== value && !(Number.isNaN(typed) && value === null)) setText(show(value));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
   return (

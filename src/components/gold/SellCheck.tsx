@@ -75,7 +75,7 @@ export function SellCheck() {
 
           <div className="rounded-lg border bg-card p-4 text-sm">
             <Row label={t("metalValueNow")} value={money(r.raw)} />
-            {r.estimate.basis !== "estimate" && r.estimate.susutPct !== null && r.estimate.basis === "buyBack" && (
+            {r.estimate.basis === "buyBack" && r.estimate.susutPct !== null && (
               <Row label={t("impliedSusut", { pct: Number(r.estimate.susutPct.toFixed(1)) })} value="" />
             )}
             {r.estimate.basis === "susut" && r.estimate.buyBackRate !== null && (
