@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowDownUp, Pencil, TrendingDown, TrendingUp, X } from "lucide-react";
+import { ArrowDownUp, Pencil, TrendingDown, X } from "lucide-react";
 import { useGold } from "@/lib/gold-store";
-import { analyze, baseRateOf, fmt, purityLabel } from "@/lib/gold";
+import { baseRateOf, countryEstimate, fmt, purityLabel, tradeUpahUsd, type Country } from "@/lib/gold";
 import { BasisBadge } from "./BasisBadge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useI18n } from "@/lib/i18n";
@@ -20,7 +20,9 @@ export function Arbitrage() {
   const cur = settings.baseCurrency;
 
   const included = countries.filter((c) => !excluded.includes(c.id));
-  const rows = included.map((c) => ({ c, r: analyze(trade, c, settings.spotUsdOz, settings.priceBasis ?? "retail") }));
+  const upahUsd = tradeUpahUsd(trade, base);
+  const estimate = (c: Country) => countryEstimate({ weight: trade.weight, purity: trade.purity, country: c, usdPerOz: settings.spotUsdOz, basis: settings.priceBasis ?? "retail", upahUsd });
+  const rows = included.map((c) => ({ c, r: estimate(c) }));
   const money = (n: number) => fmt(n * base, cur, d);
 
   const toggle = (id: string) =>
@@ -32,18 +34,17 @@ export function Arbitrage() {
   const bId = pair && included.some((c) => c.id === pair.b) ? pair.b : (included[1] ?? included[0])?.id;
   const A = included.find((c) => c.id === aId);
   const B = included.find((c) => c.id === bId);
-  const rA = A ? analyze(trade, A, settings.spotUsdOz, settings.priceBasis ?? "retail") : null;
-  const rB = B ? analyze(trade, B, settings.spotUsdOz, settings.priceBasis ?? "retail") : null;
+  const rA = A ? estimate(A) : null;
+  const rB = B ? estimate(B) : null;
 
   if (countries.length === 0) return null;
 
   const min = rows.length ? Math.min(...rows.map((x) => x.r.totalUsd)) : 0;
   const max = rows.length ? Math.max(...rows.map((x) => x.r.totalUsd)) : 0;
   const best = rows.find((x) => x.r.totalUsd === min);
-  const sell = rows.find((x) => x.r.totalUsd === max);
 
   const val = (x: (typeof rows)[number]) =>
-    sort === "name" ? x.c.name : sort === "total" ? x.r.totalUsd : sort === "perG" ? x.r.breakEvenPerG : x.r.premiumPct;
+    sort === "name" ? x.c.name : sort === "total" ? x.r.totalUsd : sort === "perG" ? x.r.perGramUsd : x.r.overMetalPct;
   const sorted = [...rows].sort((a, b) => {
     const va = val(a), vb = val(b);
     const cmp = typeof va === "string" ? va.localeCompare(vb as string) : (va as number) - (vb as number);
@@ -79,7 +80,7 @@ export function Arbitrage() {
       <div>
          <h2 className="font-display text-2xl">{t("spreadTitle")}</h2>
         <p className="text-sm text-muted-foreground">
-          This trade ({trade.weight} g {purityLabel(trade.purity)}, <BasisBadge inline />) priced across the selected countries.
+          {t("countryRough", { weight: trade.weight, purity: purityLabel(trade.purity) })} <BasisBadge inline />
         </p>
       </div>
 
@@ -88,7 +89,7 @@ export function Arbitrage() {
         {[
            [t("weight"), `${trade.weight} g`],
            [t("purity"), purityLabel(trade.purity)],
-           [t("makingFee"), `${money(trade.fee)}${trade.feeMode === "perGram" ? " / g" : ` ${t("flat")}`}`],
+           [t("upahPart"), `${fmt(trade.buy.upah, trade.currency, d)}${trade.buy.upahMode === "perGram" ? " / g" : ""}`],
         ].map(([l, v]) => (
           <span key={l}><span className="text-muted-foreground">{l} </span><span className="num">{v}</span></span>
         ))}
@@ -122,29 +123,23 @@ export function Arbitrage() {
         </p>
       ) : (
         <>
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
             <div className="min-w-0 rounded-lg border border-success/40 bg-card p-2.5 sm:p-4">
               <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-success sm:gap-2 sm:text-xs">
-                 <TrendingDown className="h-3.5 w-3.5" /> <span className="truncate">{t("buyHere")}</span>
+                 <TrendingDown className="h-3.5 w-3.5" /> <span className="truncate">{t("cheapestList")}</span>
               </div>
               <div className="mt-1 truncate text-sm font-medium sm:text-lg">{best!.c.name}</div>
               <div className="num text-sm text-muted-foreground">{money(best!.r.totalUsd)}</div>
             </div>
-            <div className="min-w-0 rounded-lg border border-primary/40 bg-card p-2.5 sm:p-4">
-              <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-gold sm:gap-2 sm:text-xs">
-                 <TrendingUp className="h-3.5 w-3.5" /> <span className="truncate">{t("sellHere")}</span>
-              </div>
-              <div className="mt-1 truncate text-sm font-medium sm:text-lg">{sell!.c.name}</div>
-              <div className="num text-sm text-muted-foreground">{money(sell!.r.totalUsd)}</div>
-            </div>
             <div className="min-w-0 rounded-lg border bg-card p-2.5 sm:p-4">
-               <div className="text-[10px] uppercase tracking-wider text-muted-foreground sm:text-xs">{t("spread")}</div>
+               <div className="text-[10px] uppercase tracking-wider text-muted-foreground sm:text-xs">{t("priceGap")}</div>
               <div className="num mt-1 text-sm sm:text-lg">{money(max - min)}</div>
               <div className="num text-sm text-muted-foreground">
                 {min > 0 ? (((max - min) / min) * 100).toFixed(2) : "0"}%
               </div>
             </div>
           </div>
+          <p className="text-xs text-muted-foreground">{t("countryNote")}</p>
 
           {A && B && rA && rB && (
             <div className="rounded-lg border bg-card p-4">
@@ -161,8 +156,8 @@ export function Arbitrage() {
               </div>
               <div className="mt-2 divide-y border-t">
                 {compareRow("Total", rA.totalUsd, rB.totalUsd, money)}
-                {compareRow("Per gram", rA.breakEvenPerG, rB.breakEvenPerG, money)}
-                {compareRow("Premium", rA.premiumPct, rB.premiumPct, (n) => `${n.toFixed(2)}%`)}
+                {compareRow("Per gram", rA.perGramUsd, rB.perGramUsd, money)}
+                {compareRow("Premium", rA.overMetalPct, rB.overMetalPct, (n) => `${n.toFixed(2)}%`)}
               </div>
             </div>
           )}
@@ -173,7 +168,7 @@ export function Arbitrage() {
                 <div className="min-w-0">
                   <div className="truncate text-sm font-medium">{c.name}</div>
                   <div className="num truncate text-xs text-muted-foreground">
-                    {money(r.breakEvenPerG)}/g · {r.premiumPct.toFixed(1)}% · {fmt(r.totalLocal, c.currency, 0)}
+                    {money(r.perGramUsd)}/g · {r.overMetalPct.toFixed(1)}% · {fmt(r.totalLocal, c.currency, 0)}
                   </div>
                 </div>
                 <div className="shrink-0 text-right">
@@ -203,8 +198,8 @@ export function Arbitrage() {
                     <td className="px-4 py-2.5">{c.name}</td>
                     <td className="num px-4 py-2.5 text-right">{money(r.totalUsd)}</td>
                     <td className="num px-4 py-2.5 text-right text-muted-foreground">{fmt(r.totalLocal, c.currency, d)}</td>
-                    <td className="num px-4 py-2.5 text-right">{money(r.breakEvenPerG)}</td>
-                    <td className="num px-4 py-2.5 text-right">{r.premiumPct.toFixed(2)}%</td>
+                    <td className="num px-4 py-2.5 text-right">{money(r.perGramUsd)}</td>
+                    <td className="num px-4 py-2.5 text-right">{r.overMetalPct.toFixed(2)}%</td>
                     <td className={`num px-4 py-2.5 text-right ${r.totalUsd === min ? "text-success" : "text-muted-foreground"}`}>
                       {r.totalUsd === min ? "Cheapest" : `+${money(r.totalUsd - min)}`}
                     </td>

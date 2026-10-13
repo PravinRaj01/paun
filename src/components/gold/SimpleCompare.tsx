@@ -1,5 +1,5 @@
 import { useGold } from "@/lib/gold-store";
-import { analyze, baseRateOf, fmt, purityLabel, normPurity } from "@/lib/gold";
+import { baseRateOf, countryEstimate, fmt, purityLabel, normPurity, tradeUpahUsd } from "@/lib/gold";
 import { BasisBadge } from "./BasisBadge";
 import { useI18n } from "@/lib/i18n";
 
@@ -10,7 +10,7 @@ export function SimpleCompare({ title }: { title?: string }) {
   const base = baseRateOf(settings, countries);
   const basis = settings.priceBasis ?? "retail";
   const rows = countries
-    .map((c) => ({ c, total: analyze(trade, c, settings.spotUsdOz, basis).totalUsd }))
+    .map((c) => ({ c, total: countryEstimate({ weight: trade.weight, purity: trade.purity, country: c, usdPerOz: settings.spotUsdOz, basis, upahUsd: tradeUpahUsd(trade, base) }).totalUsd }))
     .sort((a, b) => a.total - b.total);
   const min = rows[0]?.total ?? 0;
   const max = rows[rows.length - 1]?.total ?? 1;

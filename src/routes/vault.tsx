@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useGold } from "@/lib/gold-store";
-import { baseRateOf, fineOf, fmt, GRAMS_PER_OUNCE, PURITIES, sellQuote, DEFAULT_TRADE, type PurityId, type VaultItem } from "@/lib/gold";
+import { baseRateOf, fmt, normPurity, pieceValue, PURITIES, type PurityId, type VaultItem } from "@/lib/gold";
 import { formatCalendarDate, localToday } from "@/lib/datetime";
 import { useI18n, type CopyKey } from "@/lib/i18n";
 import type { ScanResponse } from "@/lib/scan";
@@ -56,15 +56,14 @@ function VaultPage() {
   const base = baseRateOf(settings, countries);
   const cur = settings.baseCurrency;
   const money = (n: number) => fmt(n * base, cur, settings.decimals);
-  const spotG = settings.spotUsdOz / GRAMS_PER_OUNCE;
   const [form, setForm] = useState({ name: "", weight: "", purity: "916" as PurityId, paid: "", date: "" });
   // the date field starts as the viewer's local today; set after mount because the server (UTC) and the browser can disagree on the date
   useEffect(() => setForm((f) => (f.date ? f : { ...f, date: localToday() })), []);
 
+  // value now and the estimated sell come from the same engine as the price checks, in the display currency
   const rows = vault.map((it) => {
-    const value = it.weight * fineOf(it.purity) * spotG;
-    const sell = sellQuote({ ...DEFAULT_TRADE, weight: it.weight, purity: it.purity, melting: 0 }, settings.spotUsdOz).payout;
-    return { it, value, sell, pl: sell - it.paidUsd };
+    const v = pieceValue({ weight: it.weight, purity: normPurity(it.purity), usdPerOz: settings.spotUsdOz, fxPerUsd: 1 });
+    return { it, value: v.valueNow, sell: v.estimatedSell, pl: v.estimatedSell - it.paidUsd };
   });
   const tot = rows.reduce((a, r) => ({ paid: a.paid + r.it.paidUsd, value: a.value + r.value, sell: a.sell + r.sell }), { paid: 0, value: 0, sell: 0 });
   const totPl = tot.sell - tot.paid;
@@ -93,7 +92,7 @@ function VaultPage() {
     toast.success(items.length === 1 ? t("scanAddedOne") : t("scanAddedMany", { n: items.length }));
   };
   const sellThis = (it: VaultItem) => {
-    setTrade((p) => ({ ...p, side: "sell", weight: it.weight, purity: it.purity, askingPrice: 0 }));
+    setTrade((p) => ({ ...p, side: "sell", weight: it.weight, purity: it.purity, sell: { ...p.sell, offer: 0 } }));
     void nav({ to: "/dashboard" });
   };
   const exportJson = () => {

@@ -49,10 +49,12 @@ describe("mergePrefs", () => {
 
 describe("sanitizeWatchlist", () => {
   it("keeps valid countries, including an optional shop mark-up", () => {
-    const w = sanitizeWatchlist(DEFAULT_COUNTRIES, ["sg"]);
+    const withMarkUp: Country[] = [{ ...DEFAULT_COUNTRIES[0]!, premium: 6 }, ...DEFAULT_COUNTRIES.slice(1)];
+    const w = sanitizeWatchlist(withMarkUp, ["sg"]);
     expect(w.countries).toHaveLength(DEFAULT_COUNTRIES.length);
     expect(w.excluded).toEqual(["sg"]);
-    expect(w.countries[0]).toEqual({ id: "my", name: "Malaysia", currency: "MYR", rate: 4.45, duty: 0, tax: 0, premium: 6 });
+    expect(w.countries[0]).toEqual({ id: "my", name: "Malaysia", currency: "MYR", rate: DEFAULT_COUNTRIES[0]!.rate, duty: 0, tax: 0, premium: 6 });
+    expect(w.countries[1]).toEqual({ id: "sg", name: "Singapore", currency: "SGD", rate: DEFAULT_COUNTRIES[1]!.rate, duty: 0, tax: 9 }); // no mark-up: left unset
   });
 
   it("leaves out a country that would be refused (a zero rate, a bad currency, a repeated id) so it cannot block the rest", () => {

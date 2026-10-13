@@ -169,6 +169,6 @@ describe("a receipt with several gold pieces", () => {
 describe("normalizePurity", () => {
   it.each([
     ["999.9", "999.9"], ["916", "916"], ["22K", "916"], ["22 k", "916"], ["22ct", "916"], ["18KT", "750"], ["14K", "585"],
-    ["9K", null], ["925", null], ["", null], ["22", null],
+    ["9K", "375"], ["375", "375"], ["12K", null], ["925", null], ["", null], ["22", null],
   ])("%j -> %j", (raw, id) => expect(normalizePurity(raw)).toBe(id));
 });

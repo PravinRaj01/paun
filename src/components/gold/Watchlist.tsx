@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useGold } from "@/lib/gold-store";
-import { baseRateOf, fmt, landedPerGram, type Country } from "@/lib/gold";
+import { baseRateOf, effectiveRate, fmt, landedPerGram, type Country } from "@/lib/gold";
 import { COUNTRY_CATALOG } from "@/lib/country-catalog";
 import { useI18n } from "@/lib/i18n";
 
@@ -104,7 +104,7 @@ function Picker({
 }
 
 export function Watchlist() {
-  const { countries, setCountries, settings, trade, setTrade } = useGold();
+  const { countries, setCountries, settings, trade, setTrade, marketFx } = useGold();
   const [editing, setEditing] = useState<string | null>(null);
   const [picker, setPicker] = useState(false);
   const { t } = useI18n();
@@ -112,7 +112,8 @@ export function Watchlist() {
 
   const save = (c: Country) => {
     if (!c.id) setCountries((p) => [...p, { ...c, id: `c${Date.now()}` }]);
-    else setCountries((p) => p.map((x) => (x.id === c.id ? c : x)));
+    // the editor shows the market rate; if it was left as it was, keep the stored value so the country keeps following the market
+    else setCountries((p) => p.map((x) => (x.id === c.id ? { ...c, rate: c.rate === effectiveRate(x, marketFx?.rates) ? x.rate : c.rate } : x)));
     setEditing(null);
   };
 

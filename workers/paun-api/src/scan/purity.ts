@@ -6,7 +6,7 @@
  * Anything else is null: the app's own `normPurity` would silently turn an unknown value into 916, which is exactly the
  * kind of quiet wrong answer a scanned receipt must not produce.
  */
-export const PURITY_IDS = ["999.9", "999", "995", "916", "875", "835", "750", "585", "417"] as const;
+export const PURITY_IDS = ["999.9", "999", "995", "916", "875", "835", "750", "585", "417", "375"] as const;
 export type PurityId = (typeof PURITY_IDS)[number];
 
 export const LEGACY_PURITY: Record<string, PurityId> = {
@@ -16,6 +16,7 @@ export const LEGACY_PURITY: Record<string, PurityId> = {
   "18K": "750",
   "14K": "585",
   "10K": "417",
+  "9K": "375",
 };
 
 /** "916", "916 ", "22K", "22 k", "22ct" -> "916"; anything unrecognised -> null. */

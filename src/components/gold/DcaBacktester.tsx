@@ -21,7 +21,7 @@ import {
 import { formatCalendarDate, formatCalendarMs } from "@/lib/datetime";
 import { backtestDca, type DcaContribution, type DcaResult } from "@/lib/dca";
 import { useSnapshot } from "@/lib/forecast/snapshot";
-import { baseRateOf, fmt, PURITIES, type PurityId } from "@/lib/gold";
+import { baseRateOf, fmt, PURITIES, SELL_ESTIMATE_DISCOUNT_PCT, type PurityId } from "@/lib/gold";
 import { useGold } from "@/lib/gold-store";
 import { useI18n, type CopyKey } from "@/lib/i18n";
 
@@ -36,7 +36,7 @@ const PERIODS: { months: number; label: CopyKey }[] = [
  * maths and its tests). This component only gathers the inputs and shows the result.
  */
 export function DcaBacktester() {
-  const { settings, countries, trade } = useGold();
+  const { settings, countries } = useGold();
   const { t } = useI18n();
   const snap = useSnapshot();
   const cur = settings.baseCurrency;
@@ -71,7 +71,7 @@ export function DcaBacktester() {
         savingsRatePct: rate.trim() === "" ? Number.NaN : Number(rate),
         baseCurrency: cur,
         baseRateToday: baseRateOf(settings, countries),
-        deductionPct: trade.deduction ?? 5,
+        deductionPct: SELL_ESTIMATE_DISCOUNT_PCT,
       },
     );
   }, [
@@ -87,7 +87,6 @@ export function DcaBacktester() {
     cur,
     settings,
     countries,
-    trade.deduction,
   ]);
 
   const seg = (on: boolean) =>
