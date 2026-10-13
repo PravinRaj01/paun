@@ -4,6 +4,7 @@ import { corsHeaders } from "../../workers/paun-api/src/cors";
 import { handleSync } from "../../workers/paun-api/src/vault/handler";
 import { MemoryVaultStore, type VaultStoreFactory } from "../../workers/paun-api/src/vault/store";
 import type { VaultItem } from "./gold";
+import { mergePrefs, type PrefsValue, type WatchlistValue } from "./prefs-sync";
 import { EMPTY_STATE, newTombstones, runSync, stampMissing, type SyncState } from "./vault-sync";
 
 /**
@@ -34,6 +35,9 @@ async function world() {
       state: { ...EMPTY_STATE } as SyncState,
       knownIds: new Set(initial.map((v) => v.id)),
       serverRemoved: new Set<string>(),
+      /** What the device holds for the account's preferences and watchlist. */
+      prefs: { language: "en", baseCurrency: "USD", baseRate: 1, decimals: 2, priceBasis: "retail", mode: "simple", theme: "dark" } as PrefsValue,
+      watchlist: { countries: [{ id: "my", name: "Malaysia", currency: "MYR", rate: 4.45, duty: 0, tax: 0, premium: 6 }], excluded: [] } as WatchlistValue,
       /** The person adds a piece (as the Vault page does: no change time, the sync stamps it). */
       add(id: string, extra: Partial<VaultItem> = {}) {
         d.vault = [...d.vault, { id, name: `${name}:${id}`, weight: 10, purity: "916", paidUsd: 500, date: "2026-10-01", ...extra }];
@@ -47,12 +51,14 @@ async function world() {
         d.vault = stampMissing(d.vault, clock);
         const gone = newTombstones(d.knownIds, d.vault, d.serverRemoved, clock);
         d.state = { ...d.state, tombstones: [...d.state.tombstones, ...gone] };
-        const r = await runSync({ token: session.bearerToken, userId: session.user.id, vault: d.vault, state: d.state, now: clock, fetchImpl: fetchFor(session.bearerToken), base: "https://api.test" });
+        const r = await runSync({ token: session.bearerToken, userId: session.user.id, vault: d.vault, state: d.state, now: clock, fetchImpl: fetchFor(session.bearerToken), base: "https://api.test", local: { prefs: d.prefs, watchlist: d.watchlist } });
         if (!r.ok) throw new Error(`sync failed: ${r.error}`);
         const merged = r.merge(d.vault);
         d.vault = merged.vault;
         d.serverRemoved = new Set(merged.removed);
         d.state = r.state;
+        if (r.prefs) d.prefs = mergePrefs(d.prefs, r.prefs);
+        if (r.watchlist) d.watchlist = r.watchlist;
         d.knownIds = new Set(d.vault.map((v) => v.id));
         return merged;
       },
@@ -185,5 +191,98 @@ describe("two accounts", () => {
     await theirs.sync();
     expect(mine.ids()).toEqual(["my-ring"]);
     expect(theirs.ids()).toEqual(["their-ring"]);
+  });
+});
+
+
+describe("preferences and watchlist across devices", () => {
+  it("the first device to sync makes its settings the account's; a brand-new device adopts them (and does not overwrite them)", async () => {
+    const w = await world();
+    const laptop = w.device("laptop", w);
+    laptop.prefs = { ...laptop.prefs, language: "ms", baseCurrency: "MYR", decimals: 3, theme: "light" };
+    laptop.watchlist = { countries: [{ id: "my", name: "Malaysia", currency: "MYR", rate: 4.6, duty: 1, tax: 2, premium: 7 }], excluded: ["sg"] };
+    await laptop.sync();
+    tick(1);
+    const phone = w.device("phone", w); // brand new: default English, default watchlist
+    await phone.sync();
+    expect(phone.prefs).toMatchObject({ language: "ms", baseCurrency: "MYR", decimals: 3, theme: "light" });
+    expect(phone.watchlist).toEqual(laptop.watchlist);
+    tick(1);
+    await laptop.sync();
+    expect(laptop.prefs.language).toBe("ms"); // the new phone's defaults did not overwrite the account's
+  });
+
+  it("a change on one device reaches the other", async () => {
+    const w = await world();
+    const laptop = w.device("laptop", w);
+    const phone = w.device("phone", w);
+    await laptop.sync();
+    tick(1);
+    await phone.sync();
+    tick(1);
+    laptop.prefs = { ...laptop.prefs, language: "ms", mode: "pro" };
+    laptop.watchlist = { ...laptop.watchlist, excluded: ["in"] };
+    await laptop.sync();
+    tick(1);
+    await phone.sync();
+    expect(phone.prefs).toMatchObject({ language: "ms", mode: "pro" });
+    expect(phone.watchlist.excluded).toEqual(["in"]);
+  });
+
+  it("when two devices change the same setting, the newest change wins on both", async () => {
+    const w = await world();
+    const laptop = w.device("laptop", w);
+    const phone = w.device("phone", w);
+    await laptop.sync();
+    tick(1);
+    await phone.sync();
+    tick(1);
+    laptop.prefs = { ...laptop.prefs, decimals: 1 };
+    await laptop.sync();
+    tick(5);
+    phone.prefs = { ...phone.prefs, decimals: 4 }; // later
+    await phone.sync();
+    tick(1);
+    await laptop.sync();
+    expect(laptop.prefs.decimals).toBe(4);
+    expect(phone.prefs.decimals).toBe(4);
+  });
+
+  it("no ping-pong: after adopting the account's settings a device sends nothing back, so the stored time does not move", async () => {
+    const w = await world();
+    const laptop = w.device("laptop", w);
+    laptop.prefs = { ...laptop.prefs, language: "ms" };
+    await laptop.sync();
+    tick(1);
+    const phone = w.device("phone", w);
+    await phone.sync();
+    const stored = async () => (await w.store.getPrefs(w.user.id)).prefs!.updatedAt;
+    const before = await stored();
+    tick(10);
+    await phone.sync();
+    tick(10);
+    await laptop.sync();
+    tick(10);
+    await phone.sync();
+    expect(await stored()).toBe(before);
+  });
+
+  it("the spot price, price source and keys never travel: only the whitelisted preferences are on the server", async () => {
+    const w = await world();
+    const laptop = w.device("laptop", w);
+    await laptop.sync();
+    const stored = JSON.stringify(await w.store.getPrefs(w.user.id));
+    for (const forbidden of ["spotUsdOz", "apiKey", "source", "livePromptSeen", "trade"]) expect(stored).not.toContain(forbidden);
+  });
+
+  it("two accounts keep separate settings", async () => {
+    const w = await world();
+    const other = await w.newSession("other@example.com", "Other");
+    const mine = w.device("mine", w);
+    const theirs = w.device("theirs", other);
+    mine.prefs = { ...mine.prefs, language: "ms" };
+    await mine.sync();
+    await theirs.sync();
+    expect(theirs.prefs.language).toBe("en");
   });
 });

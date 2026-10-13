@@ -1,7 +1,7 @@
 import { Pool } from "@neondatabase/serverless";
 import type { Env } from "../env";
 import type { PurityId } from "../scan/purity";
-import type { Removal, SyncItem } from "./validate";
+import type { PrefsValue, Removal, Stamped, SyncItem, WatchlistValue } from "./validate";
 
 /**
  * Where an account's synced pieces live. One interface, two implementations: Postgres (Neon) for real, and an in-memory one for tests.
@@ -25,11 +25,17 @@ export type StoredRow = {
 
 export class LimitExceeded extends Error {}
 
+/** An account's preferences and watchlist: each whole, each with the moment it was last changed, or null if never saved. */
+export type StoredPrefs = { prefs: Stamped<PrefsValue> | null; watchlist: Stamped<WatchlistValue> | null };
+
 export interface VaultStore {
   /** Apply a batch all-or-nothing. Throws LimitExceeded (and applies nothing) if the account would end up with more than `max` live pieces. */
   apply(userId: string, items: SyncItem[], removed: Removal[], max: number): Promise<void>;
   /** Every row (pieces and tombstones) changed after `since`, oldest change first. */
   changedSince(userId: string, since: number): Promise<StoredRow[]>;
+  /** Save preferences and/or watchlist, each only if its `updatedAt` is NEWER than what is stored (the first save always is). */
+  applyPrefs(userId: string, prefs: Stamped<PrefsValue> | undefined, watchlist: Stamped<WatchlistValue> | undefined): Promise<void>;
+  getPrefs(userId: string): Promise<StoredPrefs>;
 }
 export type VaultStoreHandle = { store: VaultStore; close: () => Promise<void> };
 export type VaultStoreFactory = (env: Env) => VaultStoreHandle;
@@ -66,6 +72,20 @@ export class MemoryVaultStore implements VaultStore {
     }
   }
 
+  private prefsByUser = new Map<string, StoredPrefs>();
+
+  async applyPrefs(userId: string, prefs: Stamped<PrefsValue> | undefined, watchlist: Stamped<WatchlistValue> | undefined): Promise<void> {
+    const have = this.prefsByUser.get(userId) ?? { prefs: null, watchlist: null };
+    const next: StoredPrefs = { ...have };
+    if (prefs && (!have.prefs || newer(prefs.updatedAt, have.prefs.updatedAt))) next.prefs = structuredClone(prefs);
+    if (watchlist && (!have.watchlist || newer(watchlist.updatedAt, have.watchlist.updatedAt))) next.watchlist = structuredClone(watchlist);
+    this.prefsByUser.set(userId, next);
+  }
+
+  async getPrefs(userId: string): Promise<StoredPrefs> {
+    return structuredClone(this.prefsByUser.get(userId) ?? { prefs: null, watchlist: null });
+  }
+
   async changedSince(userId: string, since: number): Promise<StoredRow[]> {
     return [...this.userRows(userId).values()].filter((r) => r.version > since).sort((a, b) => a.version - b.version).map((r) => ({ ...r }));
   }
@@ -90,8 +110,35 @@ on conflict (user_id, id) do update set
   updated_at = excluded.updated_at, deleted_at = excluded.deleted_at, version = nextval('vault_version_seq')
 where vault_items.updated_at < excluded.updated_at`;
 
+const PREFS_UPSERT = `
+insert into user_prefs (user_id, prefs, prefs_at) values ($1, $2::jsonb, $3)
+on conflict (user_id) do update set prefs = excluded.prefs, prefs_at = excluded.prefs_at
+where user_prefs.prefs_at is null or user_prefs.prefs_at < excluded.prefs_at`;
+const WATCHLIST_UPSERT = `
+insert into user_prefs (user_id, watchlist, watchlist_at) values ($1, $2::jsonb, $3)
+on conflict (user_id) do update set watchlist = excluded.watchlist, watchlist_at = excluded.watchlist_at
+where user_prefs.watchlist_at is null or user_prefs.watchlist_at < excluded.watchlist_at`;
+
 export class PgVaultStore implements VaultStore {
   constructor(private pool: Pool) {}
+
+  async applyPrefs(userId: string, prefs: Stamped<PrefsValue> | undefined, watchlist: Stamped<WatchlistValue> | undefined): Promise<void> {
+    const db = this.pool as unknown as Db;
+    if (prefs) await db.query(PREFS_UPSERT, [userId, JSON.stringify(prefs.value), prefs.updatedAt]);
+    if (watchlist) await db.query(WATCHLIST_UPSERT, [userId, JSON.stringify(watchlist.value), watchlist.updatedAt]);
+  }
+
+  async getPrefs(userId: string): Promise<StoredPrefs> {
+    const r = await (this.pool as unknown as Db).query<{ prefs: PrefsValue | null; prefs_at: Date | null; watchlist: WatchlistValue | null; watchlist_at: Date | null }>(
+      "select prefs, prefs_at, watchlist, watchlist_at from user_prefs where user_id = $1",
+      [userId],
+    );
+    const row = r.rows[0];
+    return {
+      prefs: row?.prefs && row.prefs_at ? { value: row.prefs, updatedAt: new Date(row.prefs_at).toISOString() } : null,
+      watchlist: row?.watchlist && row.watchlist_at ? { value: row.watchlist, updatedAt: new Date(row.watchlist_at).toISOString() } : null,
+    };
+  }
 
   async apply(userId: string, items: SyncItem[], removed: Removal[], max: number): Promise<void> {
     const client = await this.pool.connect();

@@ -208,3 +208,58 @@ describe("runSync (one round trip)", () => {
     expect(body).toMatchObject({ since: 0, removed: [] });
   });
 });
+
+describe("runSync: preferences and watchlist in the request", () => {
+  const prefs = { language: "ms" as const, baseCurrency: "MYR", decimals: 2 };
+  const watchlist = { countries: [{ id: "my", name: "Malaysia", currency: "MYR", rate: 4.45, duty: 0, tax: 0 }], excluded: [] };
+  const capture = () => {
+    const seen: { body?: Record<string, unknown> } = {};
+    const fetchImpl = (async (_u: string, init: RequestInit) => ((seen.body = JSON.parse(String(init.body))), new Response(JSON.stringify({ ok: true, version: 1, items: [], removed: [], prefs: null, watchlist: null })))) as unknown as typeof fetch;
+    return { seen, fetchImpl };
+  };
+  const EPOCH_ISO = "1970-01-01T00:00:00.000Z";
+
+  it("a device that never synced settings stamps them with the epoch (so an existing account's settings win)", async () => {
+    const c = capture();
+    await runSync({ token: "t", userId: "u1", vault: [], state: state(), now: NOW, fetchImpl: c.fetchImpl, local: { prefs, watchlist } });
+    expect(c.seen.body!["prefs"]).toEqual({ value: prefs, updatedAt: EPOCH_ISO });
+    expect(c.seen.body!["watchlist"]).toEqual({ value: watchlist, updatedAt: EPOCH_ISO });
+  });
+
+  it("afterwards, unchanged settings are not sent at all, and a changed half is stamped with the moment of the change", async () => {
+    const first = capture();
+    const r1 = await runSync({ token: "t", userId: "u1", vault: [], state: state(), now: NOW, fetchImpl: first.fetchImpl, local: { prefs, watchlist } });
+    if (!r1.ok) throw new Error("expected ok");
+    const second = capture();
+    const r2 = await runSync({ token: "t", userId: "u1", vault: [], state: r1.state, now: NOW, fetchImpl: second.fetchImpl, local: { prefs, watchlist } });
+    expect(second.seen.body).not.toHaveProperty("prefs");
+    expect(second.seen.body).not.toHaveProperty("watchlist");
+    if (!r2.ok) throw new Error("expected ok");
+    const third = capture();
+    await runSync({ token: "t", userId: "u1", vault: [], state: r2.state, now: NOW, fetchImpl: third.fetchImpl, local: { prefs: { ...prefs, decimals: 3 }, watchlist } });
+    expect(third.seen.body!["prefs"]).toEqual({ value: { ...prefs, decimals: 3 }, updatedAt: NOW.toISOString() });
+    expect(third.seen.body).not.toHaveProperty("watchlist");
+  });
+
+  it("settings are left out entirely when the caller passes none", async () => {
+    const c = capture();
+    await runSync({ token: "t", userId: "u1", vault: [], state: state(), now: NOW, fetchImpl: c.fetchImpl });
+    expect(c.seen.body).not.toHaveProperty("prefs");
+  });
+
+  it("an old server that does not know settings (no prefs field in its answer) is not an error", async () => {
+    const old = (async () => new Response(JSON.stringify({ ok: true, version: 3, items: [], removed: [] }))) as unknown as typeof fetch;
+    const r = await runSync({ token: "t", userId: "u1", vault: [], state: state(), now: NOW, fetchImpl: old, local: { prefs, watchlist } });
+    expect(r.ok).toBe(true);
+    expect(r.ok && r.prefs).toBeUndefined();
+  });
+
+  it("adopts the account's settings when they are newer, and reports them", async () => {
+    const answer = { ok: true, version: 2, items: [], removed: [], prefs: { value: { language: "en", decimals: 4 }, updatedAt: "2026-10-09T03:00:00.000Z" }, watchlist: null };
+    const fetchImpl = (async () => new Response(JSON.stringify(answer))) as unknown as typeof fetch;
+    const r = await runSync({ token: "t", userId: "u1", vault: [], state: state(), now: NOW, fetchImpl, local: { prefs, watchlist } });
+    if (!r.ok) throw new Error("expected ok");
+    expect(r.prefs).toEqual({ language: "en", decimals: 4 });
+    expect(r.state.prefsAt).toBe("2026-10-09T03:00:00.000Z");
+  });
+});

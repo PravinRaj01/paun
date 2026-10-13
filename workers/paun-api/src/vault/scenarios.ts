@@ -2,7 +2,11 @@ import { LimitExceeded, type VaultStore } from "./store";
 import type { Removal, SyncItem } from "./validate";
 
 /** Minimal assertions with no dependencies, so this file runs in the unit tests and in a plain script alike. */
-const show = (v: unknown) => JSON.stringify(v);
+/** JSON with the keys of every object sorted, so two equal values compare equal whatever order a database returned the keys in
+ *  (Postgres `jsonb` stores keys in its own order). */
+const canonical = (v: unknown): unknown =>
+  Array.isArray(v) ? v.map(canonical) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([k, x]) => [k, canonical(x)])) : v;
+const show = (v: unknown) => JSON.stringify(canonical(v));
 const assert = {
   equal: (actual: unknown, expected: unknown) => {
     if (actual !== expected) throw new Error(`expected ${show(expected)}, got ${show(actual)}`);
@@ -41,6 +45,12 @@ export const piece = (id: string, over: Partial<SyncItem> = {}): SyncItem => ({
 export const gone = (id: string, deletedAt = "2026-10-05T00:00:00.000Z"): Removal => ({ id, deletedAt });
 const at = (day: number) => `2026-10-${String(day).padStart(2, "0")}T00:00:00.000Z`;
 const MAX = 50;
+
+const prefsOf = (language: "en" | "ms", at: string) => ({ value: { language, decimals: 2 }, updatedAt: at });
+const listOf = (rate: number, at: string) => ({
+  value: { countries: [{ id: "my", name: "Malaysia", currency: "MYR", rate, duty: 0, tax: 0, premium: 6 }], excluded: ["sg"] },
+  updatedAt: at,
+});
 
 export type Scenario = { name: string; run: (store: VaultStore, a: string, b: string) => Promise<void> };
 
@@ -150,6 +160,50 @@ export const scenarios: Scenario[] = [
       await s.apply(a, [], [gone("m1", at(8)), gone("m2", at(8))], 3);
       await s.apply(a, [piece("m4"), piece("m5")], [], 3); // 3 live: m3, m4, m5
       assert.equal((await s.changedSince(a, 0)).filter((r) => r.deletedAt === null).length, 3);
+    },
+  },
+  {
+    name: "settings: none at first, and the first save is kept whole",
+    run: async (s, a) => {
+      assert.deepEqual(await s.getPrefs(a), { prefs: null, watchlist: null });
+      await s.applyPrefs(a, prefsOf("ms", at(3)), listOf(4.5, at(3)));
+      assert.deepEqual(await s.getPrefs(a), { prefs: prefsOf("ms", at(3)), watchlist: listOf(4.5, at(3)) });
+    },
+  },
+  {
+    name: "settings: an older change is ignored, a newer one wins, and an equal time changes nothing",
+    run: async (s, a) => {
+      await s.applyPrefs(a, prefsOf("ms", at(5)), undefined);
+      await s.applyPrefs(a, prefsOf("en", at(3)), undefined);
+      assert.equal((await s.getPrefs(a)).prefs!.value.language, "ms");
+      await s.applyPrefs(a, prefsOf("en", at(5)), undefined);
+      assert.equal((await s.getPrefs(a)).prefs!.value.language, "ms");
+      await s.applyPrefs(a, prefsOf("en", at(7)), undefined);
+      assert.equal((await s.getPrefs(a)).prefs!.value.language, "en");
+      assert.equal((await s.getPrefs(a)).prefs!.updatedAt, at(7));
+    },
+  },
+  {
+    name: "settings: preferences and watchlist are independent of each other",
+    run: async (s, a) => {
+      await s.applyPrefs(a, prefsOf("ms", at(5)), listOf(4.5, at(5)));
+      await s.applyPrefs(a, undefined, listOf(4.7, at(8))); // only the watchlist changes
+      const got = await s.getPrefs(a);
+      assert.equal(got.prefs!.value.language, "ms");
+      assert.equal(got.watchlist!.value.countries[0]!.rate, 4.7);
+      await s.applyPrefs(a, prefsOf("en", at(9)), listOf(1, at(2))); // newer prefs, older watchlist
+      const after = await s.getPrefs(a);
+      assert.equal(after.prefs!.value.language, "en");
+      assert.equal(after.watchlist!.value.countries[0]!.rate, 4.7);
+    },
+  },
+  {
+    name: "settings: two accounts never see each other's",
+    run: async (s, a, b) => {
+      await s.applyPrefs(a, prefsOf("ms", at(5)), listOf(4.5, at(5)));
+      assert.deepEqual(await s.getPrefs(b), { prefs: null, watchlist: null });
+      await s.applyPrefs(b, prefsOf("en", at(6)), undefined);
+      assert.equal((await s.getPrefs(a)).prefs!.value.language, "ms");
     },
   },
   {

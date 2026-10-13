@@ -5,7 +5,7 @@ import type { Env, ExecutionContextLike } from "../env";
 import { json } from "../http";
 import { allowHourly } from "../rate";
 import { createVaultStore, LimitExceeded, type VaultStoreFactory } from "./store";
-import { MAX_BODY_CHARS, MAX_ITEMS, SYNC_PER_HOUR, validateSyncBody, type Removal, type SyncItem } from "./validate";
+import { MAX_BODY_CHARS, MAX_ITEMS, SYNC_PER_HOUR, validateSyncBody, type PrefsValue, type Removal, type Stamped, type SyncItem, type WatchlistValue } from "./validate";
 
 /**
  * POST /sync  { since: number, items: [...], removed: [{ id, deletedAt }] }   with  Authorization: Bearer <session>
@@ -14,7 +14,15 @@ import { MAX_BODY_CHARS, MAX_ITEMS, SYNC_PER_HOUR, validateSyncBody, type Remova
  * copy), then answers with everything that changed on the server after `since`, plus the new `version` to ask from next time.
  * Everything is scoped to the signed-in account: the account id comes from the session, never from the request.
  */
-export type SyncResponse = { ok: true; version: number; items: SyncItem[]; removed: Removal[] };
+export type SyncResponse = {
+  ok: true;
+  version: number;
+  items: SyncItem[];
+  removed: Removal[];
+  /** The account's current preferences and watchlist (null if never saved); the device applies them if they are newer than its own. */
+  prefs: Stamped<PrefsValue> | null;
+  watchlist: Stamped<WatchlistValue> | null;
+};
 
 export async function handleSync(
   request: Request,
@@ -49,7 +57,7 @@ export async function handleSync(
   }
   const checked = validateSyncBody(raw, now);
   if (!checked.ok) return json({ error: "invalid_request", field: checked.field }, 400, cors);
-  const { since, items, removed } = checked.value;
+  const { since, items, removed, prefs, watchlist } = checked.value;
 
   const handle = storeFactory(env);
   try {
@@ -59,12 +67,16 @@ export async function handleSync(
       if (e instanceof LimitExceeded) return json({ error: "too_many_items", max: MAX_ITEMS }, 413, cors);
       throw e;
     }
+    await handle.store.applyPrefs(userId, prefs, watchlist);
     const rows = await handle.store.changedSince(userId, since);
+    const stored = await handle.store.getPrefs(userId);
     const body: SyncResponse = {
       ok: true,
       version: rows.reduce((top, r) => Math.max(top, r.version), since),
       items: rows.filter((r) => r.deletedAt === null).map((r) => ({ id: r.id, name: r.name, weight: r.weight, purity: r.purity, paidUsd: r.paidUsd, date: r.date, updatedAt: r.updatedAt })),
       removed: rows.filter((r) => r.deletedAt !== null).map((r) => ({ id: r.id, deletedAt: r.deletedAt! })),
+      prefs: stored.prefs,
+      watchlist: stored.watchlist,
     };
     console.log(`sync: ${items.length} in, ${removed.length} removed in, ${body.items.length} out`); // counts only: never ids, names or the account
     return json(body, 200, cors);

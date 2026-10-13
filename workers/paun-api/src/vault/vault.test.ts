@@ -191,10 +191,105 @@ describe("POST /sync: two devices of one account", () => {
 
   it("a storage failure is a 502 sync_failed with no details, and the connection is still closed", async () => {
     const t = await setup();
-    const failing: VaultStoreFactory = () => ({ store: { apply: async () => { throw new Error("db down: password=hunter2"); }, changedSince: async () => [] }, close: async () => void t.closedStores.push(1) });
+    const failing: VaultStoreFactory = () => ({ store: { apply: async () => { throw new Error("db down: password=hunter2"); }, changedSince: async () => [], applyPrefs: async () => undefined, getPrefs: async () => ({ prefs: null, watchlist: null }) }, close: async () => void t.closedStores.push(1) });
     const res = await handleSync(req({ items: [piece("x")] }, t.bearerToken), t.env, corsHeaders(ORIGIN, t.env), undefined, t.factory, failing, NOW);
     expect(res.status).toBe(502);
     expect(await res.text()).not.toContain("hunter2");
     expect(t.closedStores).toHaveLength(1);
+  });
+});
+
+const EPOCH = "1970-01-01T00:00:00.000Z";
+const prefs = (over: object = {}) => ({ language: "ms", baseCurrency: "MYR", baseRate: 4.5, decimals: 2, priceBasis: "retail", mode: "pro", theme: "light", ...over });
+const list = (over: object = {}) => ({ countries: [{ id: "my", name: "Malaysia", currency: "MYR", rate: 4.45, duty: 0, tax: 0, premium: 6 }, { id: "in", name: "India", currency: "INR", rate: 83.5, duty: 6, tax: 3 }], excluded: ["in"], ...over });
+const stamped = (value: unknown, updatedAt = "2026-10-09T04:00:00.000Z") => ({ value, updatedAt });
+
+describe("validateSyncBody: preferences and watchlist", () => {
+  it("accepts a full set and keeps it exactly", () => {
+    const r = validateSyncBody({ prefs: stamped(prefs()), watchlist: stamped(list()) }, NOW);
+    expect(r).toMatchObject({ ok: true, value: { prefs: { value: prefs() }, watchlist: { value: list() } } });
+  });
+
+  it("they are optional: a request with neither is fine", () => {
+    const r = validateSyncBody({ items: [] }, NOW);
+    expect(r.ok && r.value.prefs).toBeUndefined();
+    expect(r.ok && r.value.watchlist).toBeUndefined();
+  });
+
+  it("drops anything that is not on the whitelist: no price, no key, no calculator input can be stored", () => {
+    const r = validateSyncBody({ prefs: stamped({ ...prefs(), spotUsdOz: 4000, apiKey: "secret-key", source: "manual", livePromptSeen: true, trade: { weight: 9 } }) }, NOW);
+    expect(r.ok && r.value.prefs!.value).toEqual(prefs());
+    expect(JSON.stringify(r)).not.toContain("secret-key");
+  });
+
+  it("accepts the epoch as the time of a device's first sync (so the account's own settings win)", () => {
+    expect(validateSyncBody({ prefs: stamped(prefs(), EPOCH), watchlist: stamped(list(), EPOCH) }, NOW)).toMatchObject({ ok: true });
+  });
+
+  it.each([
+    ["a language we do not have", { prefs: stamped(prefs({ language: "fr" })) }, "prefs"],
+    ["a currency that is not three capitals", { prefs: stamped(prefs({ baseCurrency: "ringgit" })) }, "prefs"],
+    ["a zero rate", { prefs: stamped(prefs({ baseRate: 0 })) }, "prefs"],
+    ["five decimals", { prefs: stamped(prefs({ decimals: 5 })) }, "prefs"],
+    ["a mode that does not exist", { prefs: stamped(prefs({ mode: "expert" })) }, "prefs"],
+    ["a time in the future", { prefs: stamped(prefs(), "2031-01-01T00:00:00.000Z") }, "prefs"],
+    ["a time with no timezone", { prefs: stamped(prefs(), "2026-10-09T04:00:00") }, "prefs"],
+    ["prefs that are not an object", { prefs: "ms" }, "prefs"],
+    ["a country with a zero rate", { watchlist: stamped(list({ countries: [{ id: "my", name: "M", currency: "MYR", rate: 0, duty: 0, tax: 0 }] })) }, "watchlist"],
+    ["a duty over 100", { watchlist: stamped(list({ countries: [{ id: "my", name: "M", currency: "MYR", rate: 4, duty: 120, tax: 0 }] })) }, "watchlist"],
+    ["a country id with odd characters", { watchlist: stamped(list({ countries: [{ id: "../x", name: "M", currency: "MYR", rate: 4, duty: 0, tax: 0 }] })) }, "watchlist"],
+    ["two countries with the same id", { watchlist: stamped(list({ countries: [{ id: "my", name: "A", currency: "MYR", rate: 4, duty: 0, tax: 0 }, { id: "my", name: "B", currency: "SGD", rate: 1, duty: 0, tax: 0 }] })) }, "watchlist"],
+    ["a country name that is empty", { watchlist: stamped(list({ countries: [{ id: "x", name: "", currency: "MYR", rate: 4, duty: 0, tax: 0 }] })) }, "watchlist"],
+    ["more than 60 countries", { watchlist: stamped(list({ countries: Array.from({ length: 61 }, (_v, i) => ({ id: `c${i}`, name: "N", currency: "MYR", rate: 1, duty: 0, tax: 0 })) })) }, "watchlist"],
+    ["an excluded id that is not a string", { watchlist: stamped(list({ excluded: [5] })) }, "watchlist"],
+    ["a watchlist with no countries list", { watchlist: stamped({ excluded: [] }) }, "watchlist"],
+  ])("rejects %s", (_n, body, field) => expect(validateSyncBody(body, NOW)).toEqual({ ok: false, field }));
+});
+
+describe("POST /sync: preferences and watchlist across devices", () => {
+  beforeEach(() => void vi.spyOn(console, "log").mockImplementation(() => {}));
+  afterEach(() => vi.restoreAllMocks());
+
+  it("an account with nothing saved answers null for both", async () => {
+    const t = await setup();
+    const { json } = await t.call({}, t.bearerToken);
+    expect([json.prefs, json.watchlist]).toEqual([null, null]);
+  });
+
+  it("settings saved on one device come back on another", async () => {
+    const t = await setup();
+    await t.call({ prefs: stamped(prefs()), watchlist: stamped(list()) }, t.bearerToken);
+    const other = await t.call({}, t.bearerToken);
+    expect(other.json.prefs).toEqual(stamped(prefs()));
+    expect(other.json.watchlist).toEqual(stamped(list()));
+  });
+
+  it("a device's first sync (stamped with the epoch) never overwrites the account's settings", async () => {
+    const t = await setup();
+    await t.call({ prefs: stamped(prefs({ language: "ms" }), "2026-10-09T03:00:00.000Z") }, t.bearerToken);
+    const first = await t.call({ prefs: stamped(prefs({ language: "en" }), EPOCH) }, t.bearerToken);
+    expect(first.json.prefs!.value.language).toBe("ms");
+  });
+
+  it("and onto an account with nothing, it becomes the account's (until something newer arrives)", async () => {
+    const t = await setup();
+    await t.call({ prefs: stamped(prefs({ language: "en" }), EPOCH) }, t.bearerToken);
+    const later = await t.call({ prefs: stamped(prefs({ language: "ms" }), "2026-10-09T04:30:00.000Z") }, t.bearerToken);
+    expect(later.json.prefs!.value.language).toBe("ms");
+  });
+
+  it("each account has its own, and the account id in the body is ignored", async () => {
+    const t = await setup();
+    const other = await t.newSession("other@example.com", "Other");
+    await t.call({ prefs: stamped(prefs({ language: "ms" })) }, t.bearerToken);
+    const theirs = await t.call({ userId: t.user.id }, other.bearerToken);
+    expect(theirs.json.prefs).toBeNull();
+  });
+
+  it("invalid settings are refused with 400 naming the field, and nothing is stored", async () => {
+    const t = await setup();
+    const bad = await t.call({ prefs: stamped(prefs({ language: "xx" })) }, t.bearerToken);
+    expect([bad.res.status, bad.json.field]).toEqual([400, "prefs"]);
+    expect((await t.call({}, t.bearerToken)).json.prefs).toBeNull();
   });
 });
