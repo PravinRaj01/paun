@@ -14,7 +14,7 @@ export function BetaBadge({ onPrimary = false }: { onPrimary?: boolean }) {
   return (
     <span
       title={t("scanBetaTip")}
-      className={`ml-2 inline-block rounded-full border px-1.5 py-px align-middle text-[10px] font-normal uppercase tracking-wider ${onPrimary ? "border-primary-foreground/50 text-primary-foreground" : "text-muted-foreground"}`}
+      className={`ml-2 inline-block rounded-full border px-1.5 py-px align-middle text-xs font-normal uppercase tracking-wider ${onPrimary ? "border-primary-foreground/50 text-primary-foreground" : "text-muted-foreground"}`}
     >
       {t("scanBeta")}
     </span>
@@ -43,7 +43,7 @@ export function ScanReceiptDialog({
   }, [open]);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {t("scanTitle")}
@@ -54,7 +54,7 @@ export function ScanReceiptDialog({
         {/* mounted only while open, so every opening starts clean (no old photo, no old token) */}
         {open && <ScanBody onClose={() => onOpenChange(false)} onRead={onRead} />}
         <DialogFooter>
-          <p className="mr-auto text-[11px] leading-snug text-muted-foreground">{t(ownKey ? "scanPrivacyOwn" : "scanPrivacyShared")}</p>
+          <p className="mr-auto text-xs leading-snug text-muted-foreground">{t(ownKey ? "scanPrivacyOwn" : "scanPrivacyShared")}</p>
         </DialogFooter>
       </DialogContent>
     </Dialog>

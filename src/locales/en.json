@@ -495,5 +495,6 @@
   "guideAskSell": "Do you take any fee when you buy gold back?",
   "guideAskTax": "Is this the final price, with nothing added?",
   "guideAskUnits": "Is that rate per gram, or per tahil or paun?",
-  "guideAskBank": "Can I redeem physical gold, and what are the fees?"
+  "guideAskBank": "Can I redeem physical gold, and what are the fees?",
+  "offlineNotice": "You're offline. Prices are the last ones saved."
 }

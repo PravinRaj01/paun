@@ -70,7 +70,7 @@ export function Arbitrage() {
     return (
       <div key={label} className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 py-2">
         <span className={`num text-right text-sm ${aWins ? "font-medium text-success" : "text-muted-foreground"}`}>{text(va)}</span>
-        <span className="px-2 text-center text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+        <span className="px-2 text-center text-xs uppercase tracking-wider text-muted-foreground">{label}</span>
         <span className={`num text-sm ${bWins ? "font-medium text-success" : "text-muted-foreground"}`}>{text(vb)}</span>
       </div>
     );
@@ -86,7 +86,7 @@ export function Arbitrage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border bg-card px-4 py-3 text-sm">
-         <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{t("activeTrade")}</span>
+         <span className="text-xs uppercase tracking-wider text-muted-foreground">{t("activeTrade")}</span>
         {[
            [t("weight"), `${trade.weight} g`],
            [t("purity"), purityLabel(trade.purity)],
@@ -126,21 +126,21 @@ export function Arbitrage() {
         <>
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <div className="min-w-0 rounded-lg border border-success/40 bg-card p-2.5 sm:p-4">
-              <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-success sm:gap-2 sm:text-xs">
+              <div className="flex items-center gap-1 text-xs uppercase tracking-wider text-success sm:gap-2 sm:text-xs">
                  <TrendingDown className="h-3.5 w-3.5" /> <span className="truncate">{t("buyHere")}</span>
               </div>
               <div className="mt-1 truncate text-sm font-medium sm:text-lg">{best!.c.name}</div>
               <div className="num text-sm text-muted-foreground">{money(best!.r.totalUsd)}</div>
             </div>
             <div className="min-w-0 rounded-lg border border-primary/40 bg-card p-2.5 sm:p-4">
-              <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-gold sm:gap-2 sm:text-xs">
+              <div className="flex items-center gap-1 text-xs uppercase tracking-wider text-gold sm:gap-2 sm:text-xs">
                  <TrendingUp className="h-3.5 w-3.5" /> <span className="truncate">{t("costliest")}</span>
               </div>
               <div className="mt-1 truncate text-sm font-medium sm:text-lg">{dearest!.c.name}</div>
               <div className="num text-sm text-muted-foreground">{money(dearest!.r.totalUsd)}</div>
             </div>
             <div className="min-w-0 rounded-lg border bg-card p-2.5 sm:p-4">
-               <div className="text-[10px] uppercase tracking-wider text-muted-foreground sm:text-xs">{t("gap")}</div>
+               <div className="text-xs uppercase tracking-wider text-muted-foreground sm:text-xs">{t("gap")}</div>
               <div className="num mt-1 text-sm sm:text-lg">{money(max - min)}</div>
               <div className="num text-sm text-muted-foreground">
                 {min > 0 ? (((max - min) / min) * 100).toFixed(2) : "0"}%

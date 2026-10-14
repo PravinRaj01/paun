@@ -154,3 +154,26 @@
   background-image: linear-gradient(145deg, #2a2116 0%, #0e0c09 70%);
   box-shadow: inset 0 0 0 1px rgb(227 189 95 / 0.35), inset 0 0 0 7px #17120c, inset 0 0 0 8px rgb(227 189 95 / 0.25);
 }
+
+/* Touch screens: controls in the page are at least 44 px to hit. Desktop pointers and the dock, top bar and landing are unchanged. */
+@media (pointer: coarse) {
+  main :is(button, [role="tab"], [role="combobox"], select, input:not([type="checkbox"]):not([type="radio"]):not([type="file"])) {
+    min-height: 44px;
+  }
+  main button[aria-label] {
+    min-width: 44px;
+  }
+  main a.inline-flex {
+    min-height: 44px;
+    align-items: center;
+  }
+  /* the top bar keeps its look; its buttons get an invisible larger hit area instead */
+  header button {
+    position: relative;
+  }
+  header button::after {
+    content: "";
+    position: absolute;
+    inset: -8px;
+  }
+}

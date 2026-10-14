@@ -85,7 +85,7 @@ function Picker({
                 className="flex w-full items-center justify-between rounded-md border bg-card px-3 py-2 text-left text-sm hover:border-primary/40"
               >
                 <span>
-                  {c.name} <span className="num ml-1 rounded bg-muted px-1.5 text-[10px] text-muted-foreground">{c.currency}</span>
+                  {c.name} <span className="num ml-1 rounded bg-muted px-1.5 text-xs text-muted-foreground">{c.currency}</span>
                 </span>
                 <span className="text-xs text-muted-foreground">{c.duty === 0 && c.tax === 0 ? t("dutyFree") : `${t("duty")} ${c.duty}% · ${t("tax")} ${c.tax}%`}</span>
               </button>
@@ -155,9 +155,9 @@ export function Watchlist() {
               <button className="min-w-0 flex-1 text-left" onClick={() => setTrade((t) => ({ ...t, countryId: c.id }))}>
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{c.name}</span>
-                  <span className="num rounded bg-muted px-1.5 text-[10px] text-muted-foreground">{c.currency}</span>
+                  <span className="num rounded bg-muted px-1.5 text-xs text-muted-foreground">{c.currency}</span>
                 </div>
-                 <div className="mt-1 text-[11px] text-muted-foreground">
+                 <div className="mt-1 text-xs text-muted-foreground">
                    {c.duty === 0 && c.tax === 0 ? t("dutyFree") : `${t("duty")} ${c.duty}% · ${t("tax")} ${c.tax}%`}
                  </div>
               </button>

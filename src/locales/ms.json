@@ -495,5 +495,6 @@
   "guideAskSell": "Adakah anda mengenakan sebarang bayaran apabila membeli balik emas?",
   "guideAskTax": "Adakah ini harga akhir, tanpa tambahan?",
   "guideAskUnits": "Adakah kadar itu setiap gram, atau setiap tahil atau paun?",
-  "guideAskBank": "Bolehkah saya menebus emas fizikal, dan berapa yuran?"
+  "guideAskBank": "Bolehkah saya menebus emas fizikal, dan berapa yuran?",
+  "offlineNotice": "Anda di luar talian. Harga ialah yang terakhir disimpan."
 }
