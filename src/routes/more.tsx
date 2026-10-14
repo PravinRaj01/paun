@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronRight, Download, Settings2 } from "lucide-react";
 import { AppShell } from "@/components/gold/AppShell";
 import { DOCK_ITEMS } from "@/components/gold/dock-registry";
-import { GoldGuide } from "@/components/gold/GoldGuide";
+import { useGuide } from "@/components/gold/guide/guide-context";
 import { ModeToggle } from "@/components/gold/ModeToggle";
 import { Button } from "@/components/ui/button";
 import { inMore, PAGE_PATH } from "@/lib/dock";
@@ -36,7 +36,7 @@ function MorePage() {
 function MoreContent() {
   const { t, language, setLanguage } = useI18n();
   const { dock } = useGold();
-  const [guide, setGuide] = useState(false);
+  const guide = useGuide();
   const [install, setInstall] = useState<BIPEvent | null>(null);
   useEffect(() => {
     const h = (e: Event) => {
@@ -81,7 +81,7 @@ function MoreContent() {
                   {body(r)}
                 </Link>
               ) : (
-                <button type="button" onClick={() => setGuide(true)} className="flex w-full items-center gap-3 px-4 py-3 hover:bg-muted/50">
+                <button type="button" onClick={() => guide.open()} className="flex w-full items-center gap-3 px-4 py-3 hover:bg-muted/50">
                   {body(r)}
                 </button>
               )}
@@ -123,7 +123,6 @@ function MoreContent() {
           </Button>
         )}
       </section>
-      <GoldGuide open={guide} onOpenChange={setGuide} />
     </div>
   );
 }
