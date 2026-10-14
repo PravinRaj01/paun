@@ -36,7 +36,16 @@ export function BuyCheck() {
     const paid = r.quote?.total ?? r.expectedTotal; // the typed total, otherwise the total the typed rate and upah give: never Paun's own guess
     setVault((v) => [
       ...v,
-      { id: crypto.randomUUID(), name: `${trade.weight} g ${trade.purity}`, weight: trade.weight, purity: trade.purity, paidUsd: paid / fx, date: localToday() },
+      {
+        id: crypto.randomUUID(),
+        name: `${trade.weight} g ${trade.purity}`,
+        weight: trade.weight,
+        purity: trade.purity,
+        paidUsd: paid / fx,
+        paid,
+        currency: cur,
+        date: localToday(),
+      },
     ]);
     setAdded(true);
   };

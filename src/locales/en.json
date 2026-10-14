@@ -346,5 +346,6 @@
   "compareFoot": "Sell here counts only shops that gave a buy-back rate. Upah is never returned.",
   "countryRough": "A rough price for {{weight}} g of {{purity}} at a counter in each country.",
   "priceGap": "Gap between cheapest and dearest",
-  "countryNote": "Rough estimates with an assumed shop margin of 5%. They are not quotes, and selling gold abroad is rarely practical. Use Buy here / Sell here in the price check to compare real shops."
+  "countryNote": "Rough estimates with an assumed shop margin of 5%. They are not quotes, and selling gold abroad is rarely practical. Use Buy here / Sell here in the price check to compare real shops.",
+  "paidConvertedNote": "Prices paid in another currency are shown at today's exchange rate (marked ≈)."
 }

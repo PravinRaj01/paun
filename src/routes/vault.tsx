@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useGold } from "@/lib/gold-store";
-import { baseRateOf, fmt, normPurity, pieceValue, PURITIES, type PurityId, type VaultItem } from "@/lib/gold";
+import { baseRateOf, currencyRate, fmt, normPurity, paidInDisplay, pieceValue, PURITIES, type PurityId, type VaultItem } from "@/lib/gold";
 import { formatCalendarDate, localToday } from "@/lib/datetime";
 import { useI18n, type CopyKey } from "@/lib/i18n";
 import type { ScanResponse } from "@/lib/scan";
@@ -55,24 +55,29 @@ function VaultPage() {
   useEffect(() => saveReview(review), [review]);
   const base = baseRateOf(settings, countries);
   const cur = settings.baseCurrency;
-  const money = (n: number) => fmt(n * base, cur, settings.decimals);
+  const money = (n: number) => fmt(n, cur, settings.decimals);
   const [form, setForm] = useState({ name: "", weight: "", purity: "916" as PurityId, paid: "", date: "" });
   // the date field starts as the viewer's local today; set after mount because the server (UTC) and the browser can disagree on the date
   useEffect(() => setForm((f) => (f.date ? f : { ...f, date: localToday() })), []);
 
-  // value now and the estimated sell come from the same engine as the price checks, in the display currency
+  // value now and the estimated sell come from the same engine as the price checks, in the display currency; the price paid is what
+  // the person paid, in the currency they paid it in (converted at today's rate only when it differs from the display currency)
+  const rateOf = (c: string) => currencyRate(c, settings, countries);
   const rows = vault.map((it) => {
-    const v = pieceValue({ weight: it.weight, purity: normPurity(it.purity), usdPerOz: settings.spotUsdOz, fxPerUsd: 1 });
-    return { it, value: v.valueNow, sell: v.estimatedSell, pl: v.estimatedSell - it.paidUsd };
+    const v = pieceValue({ weight: it.weight, purity: normPurity(it.purity), usdPerOz: settings.spotUsdOz, fxPerUsd: base });
+    const paid = paidInDisplay(it, cur, base, rateOf);
+    return { it, value: v.valueNow, sell: v.estimatedSell, paid: paid.amount, converted: !paid.exact && paid.amount > 0, pl: v.estimatedSell - paid.amount };
   });
-  const tot = rows.reduce((a, r) => ({ paid: a.paid + r.it.paidUsd, value: a.value + r.value, sell: a.sell + r.sell }), { paid: 0, value: 0, sell: 0 });
+  const anyConverted = rows.some((r) => r.converted);
+  const tot = rows.reduce((a, r) => ({ paid: a.paid + r.paid, value: a.value + r.value, sell: a.sell + r.sell }), { paid: 0, value: 0, sell: 0 });
   const totPl = tot.sell - tot.paid;
   const tone = (n: number) => (n >= 0 ? "text-success" : "text-destructive");
 
   const add = () => {
     const w = Number(form.weight);
     if (!(w > 0)) return;
-    setVault((v) => [...v, { id: crypto.randomUUID(), name: form.name || `${w} g ${form.purity}`, weight: w, purity: form.purity, paidUsd: Math.max(0, Number(form.paid) / base), date: form.date }]);
+    const paid = Math.max(0, Number(form.paid) || 0);
+    setVault((v) => [...v, { id: crypto.randomUUID(), name: form.name || `${w} g ${form.purity}`, weight: w, purity: form.purity, paidUsd: paid / base, paid, currency: cur, date: form.date }]);
     setForm((f) => ({ ...f, name: "", weight: "", paid: "" }));
   };
   // The scanner never saves anything: it opens the review panel, and only "Add N pieces" there adds to the vault.
@@ -86,7 +91,7 @@ function VaultPage() {
   };
   const addReviewed = () => {
     if (!review) return;
-    const items = rowsToVaultItems(review.rows, base, () => crypto.randomUUID());
+    const items = rowsToVaultItems(review.rows, base, cur, () => crypto.randomUUID());
     setVault((v) => [...v, ...items]);
     setReview(null);
     toast.success(items.length === 1 ? t("scanAddedOne") : t("scanAddedMany", { n: items.length }));
@@ -154,15 +159,16 @@ function VaultPage() {
 
         <div className="space-y-2">
           {rows.length === 0 && <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">{t("emptyVault")}</p>}
-          {rows.map(({ it, value, sell, pl }) => (
+          {anyConverted && <p className="text-xs text-muted-foreground">{t("paidConvertedNote")}</p>}
+          {rows.map(({ it, value, sell, pl, paid, converted }) => (
             <div key={it.id} className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-4">
               <div className="min-w-0 flex-1">
                 <div className="truncate font-medium">{it.name}</div>
-                <div className="num text-xs text-muted-foreground">{it.weight} g · {it.purity} · {formatCalendarDate(it.date, language)} ·{t("paidPrice")} {money(it.paidUsd)}</div>
+                <div className="num text-xs text-muted-foreground">{it.weight} g · {it.purity} · {formatCalendarDate(it.date, language)} ·{t("paidPrice")} {converted ? "≈ " : ""}{money(paid)}</div>
               </div>
               <div className="text-right">
                 <div className="num text-sm">{money(value)} <span className="text-xs text-muted-foreground">/ {money(sell)}</span></div>
-                <div className={`num text-xs ${tone(pl)}`}>{pl >= 0 ? "+" : ""}{money(pl)}{it.paidUsd > 0 && ` (${((pl / it.paidUsd) * 100).toFixed(1)}%)`}</div>
+                <div className={`num text-xs ${tone(pl)}`}>{pl >= 0 ? "+" : ""}{money(pl)}{paid > 0 && ` (${((pl / paid) * 100).toFixed(1)}%)`}</div>
               </div>
               <div className="flex gap-1">
                 <Button size="sm" variant="ghost" className="text-gold" onClick={() => sellThis(it)}>{t("sellThis")}</Button>

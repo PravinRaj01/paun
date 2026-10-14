@@ -3,8 +3,10 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { getSnapshot } from "./forecast/snapshot";
 import { clearGeminiKey } from "./gemini-key";
 import {
+  baseRateOf,
   effectiveCountry,
   hasDefaultSpot,
+  migrateVaultPaid,
   DEFAULT_COUNTRIES,
   DEFAULT_SETTINGS,
   DEFAULT_TRADE,
@@ -64,7 +66,7 @@ const Ctx = (g.__paunGoldCtx ??= createContext<Store | null>(null));
 export function GoldProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings, hydrated] = usePersisted("settings", DEFAULT_SETTINGS);
   const [priceUnavailable, setPriceUnavailable] = useState(false);
-  const [rawCountries, setCountries] = usePersisted<Country[]>("countries", DEFAULT_COUNTRIES);
+  const [rawCountries, setCountries, countriesLoaded] = usePersisted<Country[]>("countries", DEFAULT_COUNTRIES);
   const [marketFx, setMarketFx] = useState<{ rates: Record<string, number>; asOf: string } | null>(null);
   const countries = useMemo(
     () => rawCountries.map((c) => effectiveCountry(c, marketFx?.rates)),
@@ -72,8 +74,21 @@ export function GoldProvider({ children }: { children: ReactNode }) {
   );
   const [trade, setTrade] = usePersisted("trade", DEFAULT_TRADE);
   const [excluded, setExcluded] = usePersisted<string[]>("excluded", []);
-  const [vault, setVault] = usePersisted<VaultItem[]>("vault", []);
+  const [vault, setVault, vaultLoaded] = usePersisted<VaultItem[]>("vault", []);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+  // Pieces saved before the price paid was kept in its own currency get it filled in once, from the rate the person had saved (not the
+  // market one), so what they typed comes back as typed. Pieces that arrive later from an older device are handled the same way.
+  useEffect(() => {
+    if (!hydrated || !countriesLoaded || !vaultLoaded) return;
+    const m = migrateVaultPaid(vault, {
+      currency: settings.baseCurrency,
+      ratePerUsd: baseRateOf(settings, rawCountries),
+      now: new Date(),
+    });
+    if (m.changed) setVault(m.vault);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, countriesLoaded, vaultLoaded, vault]);
 
   useEffect(() => {
     const t = localStorage.getItem(K + "theme");

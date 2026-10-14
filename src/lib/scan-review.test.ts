@@ -149,20 +149,20 @@ describe("rowProblems and reviewIsValid", () => {
   });
 });
 
-describe("rowsToVaultItems (the same maths as the manual add form)", () => {
-  it("stores the price in USD (typed price divided by the base rate), keeps weight, purity and date", () => {
-    const [a] = rowsToVaultItems([row({ name: "Rantai", weight: "12.5", paid: "450" })], 4.5, () => "new1");
-    expect(a).toEqual({ id: "new1", name: "Rantai", weight: 12.5, purity: "916", paidUsd: 100, date: "2026-09-30" });
+describe("rowsToVaultItems (the same as the manual add form)", () => {
+  it("keeps the typed price in its currency, with the USD figure beside it, and keeps weight, purity and date", () => {
+    const [a] = rowsToVaultItems([row({ name: "Rantai", weight: "12.5", paid: "450" })], 4.5, "MYR", () => "new1");
+    expect(a).toEqual({ id: "new1", name: "Rantai", weight: 12.5, purity: "916", paidUsd: 100, paid: 450, currency: "MYR", date: "2026-09-30" });
   });
 
   it("names an unnamed piece '12.5 g 916', and stores a blank price as 0", () => {
-    const [a] = rowsToVaultItems([row({ name: "  ", paid: "" })], 4.5, () => "x");
-    expect(a).toMatchObject({ name: "12.5 g 916", paidUsd: 0 });
+    const [a] = rowsToVaultItems([row({ name: "  ", paid: "" })], 4.5, "MYR", () => "x");
+    expect(a).toMatchObject({ name: "12.5 g 916", paidUsd: 0, paid: 0, currency: "MYR" });
   });
 
   it("builds one item per row with a fresh id each, in order", () => {
     let k = 0;
-    const items = rowsToVaultItems([row({ id: "a", weight: "1" }), row({ id: "b", weight: "2" }), row({ id: "c", weight: "3" })], 1, () => `v${++k}`);
+    const items = rowsToVaultItems([row({ id: "a", weight: "1" }), row({ id: "b", weight: "2" }), row({ id: "c", weight: "3" })], 1, "USD", () => `v${++k}`);
     expect(items.map((i) => [i.id, i.weight])).toEqual([["v1", 1], ["v2", 2], ["v3", 3]]);
   });
 });

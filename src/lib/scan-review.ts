@@ -96,17 +96,23 @@ export function rowProblems(row: ReviewRow): RowProblem[] {
 }
 export const reviewIsValid = (rows: ReviewRow[]) => rows.length > 0 && rows.every((r) => rowProblems(r).length === 0);
 
-/** The same maths as the manual add form: the price is typed in the base currency and stored in USD. */
-export function rowsToVaultItems(rows: ReviewRow[], baseRate: number, newId: () => string): VaultItem[] {
+/**
+ * The same as the manual add form: the price is typed in the display currency and kept in that currency (`paid` and `currency`),
+ * with its USD figure beside it. A blank price is stored as 0, "unknown".
+ */
+export function rowsToVaultItems(rows: ReviewRow[], baseRate: number, currency: string, newId: () => string): VaultItem[] {
   return rows.map((r) => {
     const weight = Number(r.weight);
     const purity = r.purity as PurityId;
+    const paid = r.paid.trim() === "" ? 0 : Math.max(0, Number(r.paid));
     return {
       id: newId(),
       name: r.name.trim() || `${weight} g ${purity}`,
       weight,
       purity,
-      paidUsd: r.paid.trim() === "" ? 0 : Math.max(0, Number(r.paid) / baseRate),
+      paidUsd: paid / baseRate,
+      paid,
+      currency,
       date: r.date,
     };
   });

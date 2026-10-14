@@ -36,6 +36,23 @@ describe("file-level errors", () => {
   });
 });
 
+describe("the price in its own currency", () => {
+  it("is kept when the file has it (a file written by this version)", () => {
+    const r = run([{ ...good, paid: 450, currency: "MYR" }]);
+    expect(r).toMatchObject({ ok: true, items: [{ paidUsd: 800, paid: 450, currency: "MYR" }] });
+  });
+
+  it("is left out, without refusing the piece, when it is missing or half-valid (a file from before this version, or hand-edited)", () => {
+    for (const over of [{}, { paid: 450 }, { currency: "MYR" }, { paid: -1, currency: "MYR" }, { paid: 450, currency: "ringgit" }, { paid: "450", currency: "MYR" }]) {
+      const r = run([{ ...good, ...over }]);
+      if (!r.ok) throw new Error("expected ok");
+      expect(r.imported).toBe(1);
+      expect(r.items[0]).not.toHaveProperty("paid");
+      expect(r.items[0]).not.toHaveProperty("currency");
+    }
+  });
+});
+
 describe("a well-formed item", () => {
   it("is imported with exactly the fields the Vault uses (extra properties are dropped)", () => {
     const r = run([{ ...good, evil: "<script>", extra: 1 }]);
