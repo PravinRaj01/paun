@@ -102,6 +102,8 @@ export function GoldProvider({ children }: { children: ReactNode }) {
   }, []);
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
+    // the browser and the installed app's status bar follow the theme, not a fixed colour
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#0e0c09" : "#f8f5ee");
   }, [theme]);
   useEffect(() => {
     document.documentElement.lang = settings.language === "ms" ? "ms" : "en";

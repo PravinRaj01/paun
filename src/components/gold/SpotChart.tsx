@@ -117,7 +117,7 @@ export function SpotChart() {
         <div>{t("chartHigh")} <span className="text-foreground">{f(hi)}</span></div>
         <div>{t("chartLow")} <span className="text-foreground">{f(lo)}</span></div>
       </div>
-      <p className="mt-2 text-[11px] text-muted-foreground">
+      <p className="mt-2 text-xs text-muted-foreground">
         {`${t("historyNote")} ${formatCalendarDate(real.asOf, language)}. ${t("historyTz")} ${basis === "retail" ? t("historyMarkup") : ""}`}
       </p>
     </section>

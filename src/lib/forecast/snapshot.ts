@@ -4,7 +4,9 @@ import { snapshotSchema, type Snapshot } from "./types";
 /**
  * Where the daily snapshot comes from. A GitHub Action publishes it to the `data` branch (never `main`, so daily bot
  * commits neither clutter the history nor trigger a site rebuild). If that is unreachable or malformed we fall back to the copy bundled in
- * /public, which is refreshed whenever the models are retrained - so the card still works offline.
+ * /public, which is refreshed whenever the models are retrained. That copy is served by the same site, so it only helps when the
+ * remote host is blocked or down: there is no service worker, so a device with no connection at all cannot load the app
+ * (the app says so with an offline notice once it is open and the connection drops).
  */
 export const REMOTE_URL =
   "https://raw.githubusercontent.com/PravinRaj01/paun/data/market-snapshot.json";

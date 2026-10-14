@@ -144,3 +144,26 @@
   ::view-transition-new(root) { animation-duration: 1ms; }
   .theme-ripple-canvas { display: none; }
 }
+
+/* Touch screens: controls in the page are at least 44 px to hit. Desktop pointers and the dock, top bar and landing are unchanged. */
+@media (pointer: coarse) {
+  main :is(button, [role="tab"], [role="combobox"], select, input:not([type="checkbox"]):not([type="radio"]):not([type="file"])) {
+    min-height: 44px;
+  }
+  main button[aria-label] {
+    min-width: 44px;
+  }
+  main a.inline-flex {
+    min-height: 44px;
+    align-items: center;
+  }
+  /* the top bar keeps its look; its buttons get an invisible larger hit area instead */
+  header button {
+    position: relative;
+  }
+  header button::after {
+    content: "";
+    position: absolute;
+    inset: -8px;
+  }
+}

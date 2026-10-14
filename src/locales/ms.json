@@ -451,5 +451,6 @@
   "guideBuyTitle": "Sebelum membeli",
   "guideBuyBody": "Tanya kadar setiap gram, upah dan kadar beli balik. Semak sama ada berat × kadar + upah sepadan dengan jumlah. Semak harga dalam Paun mengira jumlah itu dan memisahkan emas daripada upah.",
   "guideSellTitle": "Sebelum menjual",
-  "guideSellBody": "Tanya lebih daripada satu kedai tentang kadar beli balik atau susutnya, dan sama ada ia mengenakan sebarang bayaran. Bandingkan apa yang anda terima, bukan harga label. Upah tidak akan dikembalikan."
+  "guideSellBody": "Tanya lebih daripada satu kedai tentang kadar beli balik atau susutnya, dan sama ada ia mengenakan sebarang bayaran. Bandingkan apa yang anda terima, bukan harga label. Upah tidak akan dikembalikan.",
+  "offlineNotice": "Anda di luar talian. Harga ialah yang terakhir disimpan."
 }

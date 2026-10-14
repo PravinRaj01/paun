@@ -9,10 +9,10 @@ export function BasisBadge({ toggle, inline }: { toggle?: boolean; inline?: bool
   const title = b === "retail" ? t("basisTitleRetail") : t("basisTitleRaw");
   const label = b === "raw" ? t("rawSpot") : t("shopPrice");
   if (inline) return <span title={title} className="text-gold">{label.toLowerCase()}</span>;
-  const cls = `rounded-full border px-2 py-0.5 text-[11px] ${b === "retail" ? "border-primary/50 text-gold" : "text-muted-foreground"}`;
+  const cls = `rounded-full border px-2 py-0.5 text-xs ${b === "retail" ? "border-primary/50 text-gold" : "text-muted-foreground"}`;
   if (!toggle) return <span title={title} className={cls}>{label}</span>;
   return (
-    <div className="flex w-full rounded-full border p-0.5 text-[11px]" title={t("basisSwitch")}>
+    <div className="flex w-full rounded-full border p-0.5 text-xs" title={t("basisSwitch")}>
       {(["raw", "retail"] as const).map((x) => (
         <button key={x} onClick={() => setSettings((s) => ({ ...s, priceBasis: x }))}
           className={`flex-1 rounded-full px-2 py-1 text-center transition-colors ${b === x ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>

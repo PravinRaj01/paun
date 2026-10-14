@@ -126,7 +126,7 @@ export function ForecastCard() {
           style={{ left: pos(spot) }}
         />
         <span
-          className="absolute -top-5 -translate-x-1/2 whitespace-nowrap text-[10px] uppercase tracking-wider text-muted-foreground"
+          className="absolute -top-5 -translate-x-1/2 whitespace-nowrap text-xs uppercase tracking-wider text-muted-foreground"
           style={{ left: pos(spot) }}
         >
           {t("forecastNow")}
@@ -142,7 +142,7 @@ export function ForecastCard() {
           ] as const
         ).map(([label, v]) => (
           <div key={label}>
-            <dt className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            <dt className="text-xs uppercase tracking-wider text-muted-foreground">
               {t(label)}
             </dt>
             <dd className="text-foreground">{price(v)}</dd>
@@ -150,7 +150,7 @@ export function ForecastCard() {
         ))}
       </dl>
 
-      <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+      <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
         <span>
           {t("forecastNow")}: <span className="num text-foreground">{price(spot)}</span> ·{" "}
           {t("forecastAsOf")}{" "}
@@ -176,7 +176,7 @@ export function ForecastCard() {
           </button>
         </div>
       )}
-      <p className="mt-2 text-[11px] text-muted-foreground">{t("forecastDisclaimer")}</p>
+      <p className="mt-2 text-xs text-muted-foreground">{t("forecastDisclaimer")}</p>
     </>,
   );
 }
