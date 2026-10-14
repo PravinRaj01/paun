@@ -2,7 +2,7 @@ import { isAllowedOrigin } from "../cors";
 import type { Env } from "../env";
 import { json } from "../http";
 import { sanitizeScan } from "./extract";
-import { callGemini, DEFAULT_MODEL } from "./gemini";
+import { callGeminiWithFallback, DEFAULT_FALLBACK_MODEL, DEFAULT_MODEL } from "./gemini";
 import { checkScanLimits } from "./limits";
 import { verifyTurnstile } from "./turnstile";
 
@@ -70,10 +70,14 @@ export async function handleScan(
   if (!human.ok) return human.reason === "rejected" ? fail("turnstile_failed", 403) : fail("verification_unavailable", 502);
 
   await limits.reserve();
-  const model = env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
-  const result = await callGemini(geminiKey, model, image, type, fetchImpl);
+  const primary = env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
+  // GEMINI_FALLBACK_MODEL: a model name, or "none" to turn the second try off; unset means the built-in default
+  const fb = env.GEMINI_FALLBACK_MODEL?.trim() || DEFAULT_FALLBACK_MODEL;
+  const fallback = /^(none|off)$/i.test(fb) ? null : fb;
+  const result = await callGeminiWithFallback(geminiKey, { primary, fallback }, image, type, fetchImpl);
+  const tries = result.attempts.map((a) => `${a.model} ${a.outcome} ${a.ms} ms`).join("; ");
   if (!result.ok) {
-    log(`gemini ${result.reason}${result.status ? ` ${result.status}` : ""} (${result.ms} ms, ${ownKey ? "own key" : "shared key"})`);
+    log(`gemini failed (${tries}; ${ownKey ? "own key" : "shared key"})`);
     // with the visitor's own key, Google refusing it (400/401/403) or running it out of quota (429) is the visitor's to fix, so say so
     if (ownKey && result.reason === "http_error") {
       if (result.status === 400 || result.status === 401 || result.status === 403) return json({ ok: false, error: "user_key_rejected" }, 422, cors);
@@ -85,6 +89,6 @@ export async function handleScan(
   }
 
   const scan = sanitizeScan(result.data, now);
-  log(`ok (${result.ms} ms, ${model}, ${ownKey ? "own key" : "shared key"}, readable=${scan.readable}, confidence=${scan.confidence})`);
+  log(`ok (${result.ms} ms, ${result.model}${result.attempts.length > 1 ? `, after ${tries.split("; ")[0]}` : ""}, ${ownKey ? "own key" : "shared key"}, readable=${scan.readable}, confidence=${scan.confidence})`);
   return json({ ok: true, ...scan }, 200, cors);
 }

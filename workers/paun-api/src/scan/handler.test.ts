@@ -221,6 +221,106 @@ describe("when Gemini misbehaves", () => {
   });
 });
 
+describe("when Google is busy: a second model is tried once", () => {
+  const okBody = () => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(modelAnswer()) }] } }] }));
+  /** Answers with each route in turn, then repeats the last one. */
+  const inTurn = (...routes: (() => Response | Error)[]) => {
+    let n = 0;
+    return () => routes[Math.min(n++, routes.length - 1)]!();
+  };
+  const geminiCalls = (f: ReturnType<typeof fakeFetch>) => f.calls.filter((c) => c.host.includes("generativelanguage"));
+  const busy = () => new Response("{}", { status: 503 });
+
+  it.each([
+    ["a 503", busy],
+    ["a 500", () => new Response("{}", { status: 500 })],
+    ["a network failure", () => new TypeError("fetch failed")],
+    ["a timeout", () => Object.assign(new Error("timed out"), { name: "TimeoutError" })],
+  ])("%s on the first model is answered by the second", async (_n, failure) => {
+    const f = fakeFetch({ turnstile: turnstileOk, gemini: inTurn(failure, okBody) });
+    const { res, json } = await post(configured(), f);
+    expect([res.status, json["ok"]]).toEqual([200, true]);
+    const calls = geminiCalls(f);
+    expect(calls).toHaveLength(2);
+    expect(calls[0]!.url).toContain("gemini-3.5-flash-lite:generateContent");
+    expect(calls[1]!.url).toContain("gemini-3.1-flash-lite:generateContent");
+  });
+
+  it("does not use the second model when the first one answers", async () => {
+    const f = fakeFetch({ turnstile: turnstileOk, gemini: gemini() });
+    await post(configured(), f);
+    expect(geminiCalls(f)).toHaveLength(1);
+  });
+
+  it.each([400, 401, 403, 404, 429])("does not try again on %s (a bad key, a bad request or a quota is not Google being busy)", async (status) => {
+    const f = fakeFetch({ turnstile: turnstileOk, gemini: inTurn(() => new Response("{}", { status }), okBody) });
+    const { res } = await post(configured(), f);
+    expect(res.status).toBe(502);
+    expect(geminiCalls(f)).toHaveLength(1);
+  });
+
+  it("a safety block or an unreadable answer is not retried either", async () => {
+    for (const first of [() => new Response(JSON.stringify({ promptFeedback: { blockReason: "SAFETY" } })), () => new Response(JSON.stringify({ candidates: [] }))]) {
+      const f = fakeFetch({ turnstile: turnstileOk, gemini: inTurn(first, okBody) });
+      await post(configured(), f);
+      expect(geminiCalls(f)).toHaveLength(1);
+    }
+  });
+
+  it("when both models fail the visitor gets the usual 502, after exactly two tries", async () => {
+    const f = fakeFetch({ turnstile: turnstileOk, gemini: busy });
+    const { res, json } = await post(configured(), f);
+    expect([res.status, json["error"]]).toEqual([502, "scanner_unavailable"]);
+    expect(geminiCalls(f)).toHaveLength(2);
+  });
+
+  it("one scan costs one cap slot however many models it takes", async () => {
+    const env = testEnv({ GEMINI_API_KEY: "g", TURNSTILE_SECRET: "t", SCAN_DAILY_CAP: "2" });
+    const as = (ip: string) => ({ origin: ORIGIN, "cf-connecting-ip": ip });
+    const first = fakeFetch({ turnstile: turnstileOk, gemini: inTurn(busy, okBody) }); // takes two tries
+    const r1 = await post(env, first, undefined, as("1.1.1.1"));
+    const r2 = await post(env, fakeFetch({ turnstile: turnstileOk, gemini: gemini() }), undefined, as("2.2.2.2"));
+    const r3 = await post(env, fakeFetch({ turnstile: turnstileOk, gemini: gemini() }), undefined, as("3.3.3.3"));
+    expect([r1.res.status, r2.res.status]).toEqual([200, 200]);
+    expect(geminiCalls(first)).toHaveLength(2);
+    expect([r3.res.status, r3.json["error"]]).toEqual([503, "scanner_busy"]); // a cap of 2 was used up by two scans, not three
+  });
+
+  it("GEMINI_FALLBACK_MODEL names the second model, and \"none\" turns the second try off", async () => {
+    const named = fakeFetch({ turnstile: turnstileOk, gemini: inTurn(busy, okBody) });
+    await post(testEnv({ GEMINI_API_KEY: "g", TURNSTILE_SECRET: "t", GEMINI_FALLBACK_MODEL: "gemini-y-test" }), named);
+    expect(geminiCalls(named)[1]!.url).toContain("gemini-y-test:generateContent");
+    const off = fakeFetch({ turnstile: turnstileOk, gemini: inTurn(busy, okBody) });
+    const { res } = await post(testEnv({ GEMINI_API_KEY: "g", TURNSTILE_SECRET: "t", GEMINI_FALLBACK_MODEL: "none" }), off);
+    expect(res.status).toBe(502);
+    expect(geminiCalls(off)).toHaveLength(1);
+  });
+
+  it("the same model named twice is not tried twice", async () => {
+    const f = fakeFetch({ turnstile: turnstileOk, gemini: busy });
+    await post(testEnv({ GEMINI_API_KEY: "g", TURNSTILE_SECRET: "t", GEMINI_MODEL: "gemini-z", GEMINI_FALLBACK_MODEL: "gemini-z" }), f);
+    expect(geminiCalls(f)).toHaveLength(1);
+  });
+
+  it("the log names the models and how each try ended, and still never a key or any content", async () => {
+    const lines: string[] = [];
+    vi.spyOn(console, "log").mockImplementation((...a: unknown[]) => void lines.push(a.join(" ")));
+    await post(configured(), fakeFetch({ turnstile: turnstileOk, gemini: inTurn(busy, okBody) }));
+    const all = lines.join("\n");
+    expect(all).toMatch(/gemini-3\.1-flash-lite/);
+    expect(all).toMatch(/after gemini-3\.5-flash-lite http 503/);
+    expect(all).not.toContain("g-key-123");
+    expect(all).not.toContain(IMG.slice(0, 40));
+  });
+
+  it("with the visitor's own key, a rejected key is still the visitor's to fix and is not retried", async () => {
+    const f = fakeFetch({ turnstile: turnstileOk, gemini: inTurn(() => new Response("{}", { status: 403 }), okBody) });
+    const { res, json } = await post(configured(), f, undefined, { origin: ORIGIN, "cf-connecting-ip": "203.0.113.9", "x-gemini-key": "AIzaSyOwnKeyForTesting_1234567890abcd" });
+    expect([res.status, json["error"]]).toEqual([422, "user_key_rejected"]);
+    expect(geminiCalls(f)).toHaveLength(1);
+  });
+});
+
 describe("privacy", () => {
   it("nothing the user sent or the model read, and no key, ever reaches the log", async () => {
     const spy = vi.mocked(console.log);
