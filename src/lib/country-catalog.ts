@@ -4,9 +4,10 @@
  * after a country is added. No live FX feed (fully client-side app).
  *
  * Sourced (docs/research/gold-pricing-2026-10.md, October 2026): Malaysia (no tax on
- * jewellery), Singapore (GST 9%, no duty), UAE (VAT 5%). India's duty is under review
- * (issue #46). Every other entry is an indicative default, kept so the globe can show
- * a price for each country; the Compare countries picker offers them with a Custom entry.
+ * jewellery), Singapore (GST 9%, no duty), UAE (VAT 5%), India (import duty 15% from
+ * 13 May 2026, Notification 17/2026-Customs; GST 3%). Every other entry is an indicative
+ * default, kept so the globe can show a price for each country; the Compare countries
+ * picker offers them with a Custom entry.
  */
 export type CatalogEntry = Omit<{ id: string; name: string; currency: string; rate: number; duty: number; tax: number }, "id">;
 
@@ -14,7 +15,7 @@ export const COUNTRY_CATALOG: CatalogEntry[] = [
   { name: "United States", currency: "USD", rate: 1, duty: 0, tax: 0 },
   { name: "Malaysia", currency: "MYR", rate: 4.1, duty: 0, tax: 0 },
   { name: "Singapore", currency: "SGD", rate: 1.28, duty: 0, tax: 9 },
-  { name: "India", currency: "INR", rate: 96, duty: 6, tax: 3 },
+  { name: "India", currency: "INR", rate: 96, duty: 15, tax: 3 },
   { name: "UAE (Dubai)", currency: "AED", rate: 3.67, duty: 0, tax: 5 },
   { name: "Saudi Arabia", currency: "SAR", rate: 3.75, duty: 0, tax: 15 },
   { name: "Qatar", currency: "QAR", rate: 3.64, duty: 0, tax: 0 },

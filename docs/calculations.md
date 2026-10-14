@@ -207,8 +207,10 @@ estimate = ( metalLocal × (1 + retailMargin) × (1 + importDuty) + upahLocal ) 
 - `tax` applies to the whole price (metal + margin + upah). Malaysia **0**. Singapore **9%** on jewellery and on making charges
   (IRAS). UAE **5%** (secondary sources). India **3%** GST on gold and 5% on making charges (2017-era source; simplified here to one
   rate, flagged). 99.5%+ bars are exempt in Singapore, so a bar is a different product; this page is for jewellery.
-- UAE, India and the Indian duty figure are labelled "indicative, check locally". Duty a traveller may owe on bringing gold *home* is
-  not researched and is not included; the page says so.
+- UAE and India are labelled "indicative, check locally". India's `importDuty` is **15%** (BCD 10% + AIDC 5%, from 13 May 2026,
+  Notification 17/2026-Customs; `docs/research/gold-pricing-2026-10.md`), and its `tax` stays 3%: the importer's 3% IGST is not added
+  again because the shopper's GST is charged once. Duty a traveller may owe on bringing gold *home* is not researched and is not
+  included; the page says so.
 
 **Example 7.1: 10 g 916 in Singapore** (USD/SGD 1.2784, margin 5%, upah S$ 30)
 
@@ -218,6 +220,16 @@ estimate = ( metalLocal × (1 + retailMargin) × (1 + importDuty) + upahLocal ) 
 | with margin | × 1.05 = **1,655.18** |
 | plus upah | **1,685.18** |
 | plus GST 9% | **S$ 1,836.85** (GST S$ 151.67) |
+
+**Example 7.2: 10 g 916 in India** (USD/INR 88.00, margin 5%, import duty 15%, upah ₹ 2,000, GST 3%)
+
+| Line | Value |
+|---|---|
+| metal | 10 × 0.916 × (4,187 / 31.1034768) × 88 = ₹ **108,510.60** |
+| with margin | × 1.05 = **113,936.13** |
+| plus duty 15% (on the metal and margin only) | × 1.15 = **131,026.55** (duty ₹ 17,090.42) |
+| plus upah | **133,026.55** (upah is not charged duty) |
+| plus GST 3% | **₹ 137,017.35** (GST ₹ 3,990.80) |
 
 ## 8. What does not change
 

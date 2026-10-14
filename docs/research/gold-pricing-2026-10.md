@@ -83,9 +83,18 @@ USD/MYR 4.0983 ([HargaEmas.my](https://hargaemas.my/), 14 Oct).
 ([ClearTax UAE](https://www.cleartax.com/ae/vat-on-gold-in-uae), [Khaleej Times](https://www.khaleejtimes.com/markets/gold-rates-cheaper-uae-or-india)).
 Check with the Federal Tax Authority.
 
-**India** (secondary sources only). Gold import duty reportedly raised to 15% (basic customs duty 10% plus cess 5%) from 13 May 2026, with
-3% IGST on top for importers ([Drishti IAS summary](https://www.drishtiias.com/daily-updates/daily-news-analysis/gold-import-duty-hiked-to-18-4/print_manually),
-news reports). Domestic jewellery GST 3% on gold and 5% on making charges (a 2017-era figure from a trade source). Check with CBIC.
+**India.** Import duty on gold went from 6% (since the July 2024 cut) to **15% on 13 May 2026**: basic customs duty 5% to 10% and
+AIDC 1% to 5%. Primary text: Notification No. 17/2026-Customs, dated 12 May 2026, which replaces "4.35%" with "10%" against Sl. 1 of the
+principal Notification 57/2000-Customs (G.S.R. 413(E)); companions 15, 16 and 18/2026-Customs the same day (BCD, SWS and AIDC, India-UAE
+CEPA). Gazette text as mirrored by [ikargos](https://app.ikargos.com/circular/notification/details/DV6tI54BZyR3QfI3FtrU/notification-no-17-2026-customs-dated-12-may-2026);
+confirmed by [BusinessToday](https://www.businesstoday.in/india/story/big-change-in-gold-import-rules-after-15-duty-hike-govt-caps-duty-free-imports-at-100-kg-531593-2026-05-14),
+[CNBC](https://www.cnbc.com/2026/05/13/india-hikes-bullion-import-duties-to-arrest-rupee-slide.html),
+[A2Z Taxcorp](https://a2ztaxcorp.net/government-revises-customs-duty-structure-on-gold-silver-and-precious-metals-imports-sws-and-aidc-rates-rationalised-effective-from-may-13-2026/)
+and [MMTC-PAMP](https://www.mmtcpamp.com/blog/blog-detail/gold-silver-import-duty-hike). Importers also pay 3% IGST (18.45% in all,
+1.15 x 1.03); the shopper's GST below is charged once, so the app uses duty 15% and tax 3% as two separate fields. Domestic jewellery GST is
+**3% on gold and 5% on separately billed making charges** (unchanged; [ClearTax](https://cleartax.in/s/gst-impact-on-gold),
+[Razorpay](https://razorpay.com/learn/gst-rates-on-gold/)). Not modelled: the lower baggage-allowance rate for travellers (one blog only) and
+the duty a traveller may owe bringing gold home. The CBIC site itself was not reachable in this search; check it for the official text.
 
 ## 5. Units
 

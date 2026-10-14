@@ -281,6 +281,24 @@ describe("country estimate (spec section 7)", () => {
     expect(e.taxUsd * 1.2784).toBeCloseTo(151.67, 1);
   });
 
+  it("example 7.2: 10 g 916 in India with 5% margin, 15% import duty, upah 2,000 and 3% GST", () => {
+    const inr: Country = { id: "in", name: "India", currency: "INR", rate: 88, duty: 15, tax: 3 };
+    const e = countryEstimate({ weight: 10, purity: "916", country: inr, usdPerOz: USD_OZ, upahUsd: 2000 / 88 });
+    expect(e.metalUsd * 88).toBeCloseTo(108510.6, 1);
+    expect((e.metalUsd + e.marginUsd) * 88).toBeCloseTo(113936.13, 1);
+    expect(e.dutyUsd * 88).toBeCloseTo(17090.42, 1);
+    expect(e.totalLocal).toBeCloseTo(137017.35, 1);
+    expect(e.taxUsd * 88).toBeCloseTo(3990.8, 1);
+  });
+
+  it("India's shipped duty is 15% everywhere it is defined", () => {
+    const catalog = COUNTRY_CATALOG.find((c) => c.name === "India");
+    const preset = gold.DEFAULT_COUNTRIES.find((c) => c.id === "in");
+    expect(catalog?.duty).toBe(15);
+    expect(preset?.duty).toBe(15);
+    expect(catalog?.tax).toBe(3);
+  });
+
   it("duty applies to the metal and its margin, never to upah", () => {
     const c: Country = { id: "x", name: "X", currency: "XXX", rate: 1, duty: 10, tax: 0 };
     const noUpah = countryEstimate({ weight: 10, purity: "999.9", country: c, usdPerOz: 100 * GRAMS_PER_OUNCE, basis: "raw" });
@@ -332,6 +350,17 @@ describe("exchange rate from the snapshot (L1)", () => {
     expect(effectiveCountry({ ...my, premium: 6 }, { MYR: 4.0845 }).rate).toBe(4.0845);
     expect(effectiveCountry({ ...my, premium: 8 }, null).premium).toBe(8);
     expect(effectiveCountry(my, null)).toEqual(my);
+  });
+
+  it("a saved India duty of the retired 6% becomes 15%; one the person changed is kept; other countries are untouched", () => {
+    const india = { id: "in", name: "India", currency: "INR", rate: 96, duty: 6, tax: 3 };
+    expect(effectiveCountry(india, null).duty).toBe(15);
+    expect(effectiveCountry({ ...india, duty: 12 }, null).duty).toBe(12);
+    expect(effectiveCountry({ ...india, duty: 15 }, null).duty).toBe(15);
+    // an India added from the catalog under another id is covered too (the key is the currency)
+    expect(effectiveCountry({ ...india, id: "c-123" }, null).duty).toBe(15);
+    // a different country that happens to carry 6% is not India's
+    expect(effectiveCountry({ id: "x", name: "X", currency: "XXX", rate: 1, duty: 6, tax: 0 }, null).duty).toBe(6);
   });
 
   it("the display currency defaults to ringgit", () => {
