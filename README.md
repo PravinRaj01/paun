@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="public/icon-512.png" alt="Paun logo" width="120" />
+  <img src="public/screenshot-wide.png" alt="Paun's Check price screen: the shop's rate and upah, with the top bar showing today's gold price" width="720" />
 </p>
 
 <h1 align="center">Paun</h1>
 
-<p align="center"><b>A bilingual (English / Bahasa Melayu) gold assistant for people who buy, hold and sell physical gold jewellery in Malaysia.</b></p>
+<p align="center"><b>Check a jewellery shop's gold price, see what you would get back when you sell, and keep track of your gold, in RM, in English or Bahasa Melayu.</b></p>
 
 | | |
 |---|---|
@@ -12,8 +12,8 @@
 | **Stack** | TanStack Start (React 19) · Tailwind CSS v4 · Cloudflare Workers · Neon Postgres · Vitest |
 | **Plan** | [`PLAN.md`](PLAN.md): what Paun is for and what is being built next |
 
-Paun (பவுன், Tamil for a gold weight of about 8 g) runs in the browser with no login. Prices and fees in the app are indicative
-defaults the user can edit; nothing here is financial advice.
+Paun (பவுன், Tamil for a gold weight of about 8 g) runs in the browser with no login. Grams come first; the paun is shown only as an
+extra line. Prices and fees in the app are indicative defaults the user can edit; nothing here is financial advice.
 
 ---
 
@@ -23,12 +23,15 @@ defaults the user can edit; nothing here is financial advice.
 - [Features](#features)
 - [How it works](#how-it-works)
   - [The pieces](#the-pieces)
+  - [One engine for the maths](#one-engine-for-the-maths)
+  - [The guide book](#the-guide-book)
   - [Scanning a receipt](#scanning-a-receipt)
 - [Tech stack](#tech-stack)
 - [Development](#development)
   - [Commands](#commands)
   - [Environment variables](#environment-variables)
   - [Tests](#tests)
+  - [Words and the copy check](#words-and-the-copy-check)
 - [Deployment](#deployment)
 - [Project structure](#project-structure)
 - [Privacy and security](#privacy-and-security)
@@ -40,25 +43,27 @@ defaults the user can edit; nothing here is financial advice.
 Four questions, in RM, at home or at the jewellery counter:
 
 1. What is gold worth today?
-2. Is this shop's price fair, and am I paying for gold or for workmanship (*upah*)?
+2. Does this shop's quote add up, and am I paying for gold or for workmanship (*upah*)?
 3. What should I get if I sell or trade in (*susut*, buy-back rate)?
 4. What is my gold worth now?
 
-The app grew past these into trader features; [`PLAN.md`](PLAN.md) records the refocus and the phases that bring it back.
+The app grew past these into trader features; [`PLAN.md`](PLAN.md) records the refocus and the phases that brought it back.
 
 ## Features
 
 | Feature | What it does |
 |---|---|
 | **Landing** (`/`) | The animated globe of gold prices by country, today's price with when and where it is from, and a way into the price check |
-| **Check price** (`/dashboard`) | Three tabs. **Buy:** the shop's rate and upah, does the total add up, gold vs workmanship, what a sell-back would give. **Sell / trade-in:** the shop's buy-back rate or its susut, against its offer. **Buy here / Sell here:** up to four shops, lowest total and highest payout |
+| **Top bar and dock** | Today's price per ounce and per gram, always visible; a magnifying dock for the main pages |
+| **Check price** (`/dashboard`) | Three tabs. **Buy:** the shop's rate and upah, does the total add up, gold vs upah, what a sell-back would give. **Sell / trade-in:** the shop's buy-back rate or its susut, against its offer. **Buy here / Sell here:** up to four shops, lowest total, highest payout and what a round trip costs. Each tab links to the guide page that explains it |
 | **My gold** (`/vault`) | Your pieces with value now, profit and loss, the price you paid kept in the currency you paid it; JSON export and import; **receipt scanner** (Beta) |
-| **Guide** | Bilingual explainer: how a jewellery price is built, *upah*, melting deductions, purity, the *paun* unit |
-| **More** (`/more`) | Price history and a next-week range (`/markets`), a monthly plan (`/dca`), compare countries (`/countries`), language, Simple / Pro and settings |
-| **Settings** (`/settings`) | The gold price, display currency, decimals, the optional GoldAPI and Gemini keys, and **Your dock**: choose which pages sit in the dock bar and in what order, the rest go under More (our six are the default) |
+| **Guide** | A book: one page at a time on a phone, a two-page spread on a larger screen. Contents, three chapters, a worked example, words, and an "Ask the shop" box on each topic |
+| **More** (`/more`) | Whatever is not in your dock: price history and a next-week range (`/markets`), a monthly plan (`/dca`), compare countries (`/countries`), language and Simple / Pro |
+| **Compare countries** | A rough price for the same piece in each country: Buy here (cheapest), Costliest and Gap, with a table. Estimates, not quotes |
+| **Settings** (`/settings`) | The gold price, display currency, decimals, the optional GoldAPI and Gemini keys, and **Your dock**: choose which pages sit in the dock and in what order |
 | **Simple / Pro** | Simple shows the answer; Pro shows more detail and the country list you can edit |
 | **Optional sign-in** | Google sign-in keeps the Vault, preferences and watchlist in step across devices; hidden behind `?accounts=1` while it is tested |
-| **Installable** | Web app manifest, so it can be added to a phone's home screen; online only |
+| **Installable** | Web app manifest with a maskable icon and screenshots, so it can be added to a phone's home screen; online only, with a notice when the connection drops |
 
 ## How it works
 
@@ -100,6 +105,21 @@ flowchart LR
 The forecast shows a likely price range, not a direction: the regime (bearish / sideways / bullish) model did not pass its own
 ship rules, so its probabilities are hidden (`ml/README.md`).
 
+### One engine for the maths
+
+Every figure comes from `src/lib/gold.ts` (`buyCheck`, `sellCheck`, `compareQuotes`, `pieceValue`, `countryEstimate`), specified in
+[`docs/calculations.md`](docs/calculations.md). Every worked example in that spec is a test, so one piece shows the same numbers on
+every page. The shop's own board rate drives the answer; Paun never presents its own guess of a mark-up as a "fair price", upah is
+never recovered on resale, and Malaysia has no sales tax on gold jewellery.
+
+### The guide book
+
+The guide is a real page-turning book built on [`page-flip`](https://www.npmjs.com/package/page-flip), driven directly with a small
+wrapper (`src/components/gold/guide/Book.tsx`). The pages are real HTML, so text stays crisp, follows the theme and switches
+language instantly. The structure (chapters, topics, page order) is one list in `guide/topics.ts`; the words are in the locale files;
+the worked example is computed by the engine. Each claim is traced to a source in [`docs/guide-sources.md`](docs/guide-sources.md).
+One opener (`guide-context.tsx`) serves the dock, the landing page, More and the links on Check price.
+
 ### Scanning a receipt
 
 ```mermaid
@@ -125,14 +145,17 @@ sequenceDiagram
 |---|---|---|
 | Front end | TanStack Start, React 19, Vite 8 | Server-rendered pages with file-based routing |
 | Styling | Tailwind CSS v4, shadcn / Radix UI | Accessible primitives, one design token set |
+| Motion | motion | The dock's magnifying icons and the guide's opening |
+| Guide book | `page-flip` (StPageFlip) | A realistic page curl on real HTML pages |
 | Charts | Recharts | Small, React-native price and comparison charts |
-| Copy | i18next, bundled `en.json` and `ms.json` | Bilingual and available offline once loaded; trade words are not machine-translated |
+| Globe | d3-geo, TopoJSON | The landing page's interactive map |
+| Copy | i18next, bundled `en.json` and `ms.json` | Bilingual and bundled with the app; trade words are not machine-translated |
 | Hosting | Cloudflare Workers with static assets (Nitro preset `cloudflare-module`) | One platform for the site, the API, cron and KV |
 | Backend data | Cloudflare KV, Neon Postgres | KV for the shared price; Postgres only for the optional account |
 | Auth | Better Auth inside the Worker, Google ID token | Runs where the other backend code runs; no cookies, so Safari and Chrome third-party blocking does not matter |
 | Receipt reading | Gemini structured output, Cloudflare Turnstile | Vision model with a fixed schema; Turnstile against abuse |
 | Forecast | CatBoost and GARCH / EWMA in Python (offline), TypeScript in the browser | Heavy training stays offline; the browser only recomputes bands |
-| Tests | Vitest, pytest (`ml/tests`) | Maths, sync rules and forecast parity |
+| Tests | Vitest, pytest (`ml/tests`) | Maths, sync rules, copy rules and forecast parity |
 
 ## Development
 
@@ -152,6 +175,7 @@ bun run build            # production build into .output/
 bun run preview:worker   # build and run it in the real Workers runtime
 bun run deploy           # build and wrangler deploy (needs `wrangler login`)
 bun run eval:scan        # score the scanner on sample photos in ./receipts-ref (needs GEMINI_API_KEY in workers/paun-api/.dev.vars)
+bun run check:store      # run the Vault store rules against the real Neon database with throwaway accounts (needs DATABASE_URL)
 ```
 
 ### Environment variables
@@ -179,10 +203,18 @@ Backend Worker (`workers/paun-api/wrangler.jsonc` for variables; `wrangler secre
 
 ### Tests
 
-`bun run test` runs 556 tests in 21 files (258 of them in the Worker), covering the money maths, Vault import, sync merge rules, the
-forecast parity against `public/data/market-snapshot.json`, and the Worker's limits and validation. A rule in `datetime.test.ts` fails
-if a component formats a date itself. The Python side runs with `pytest ml/tests`. GitHub Actions runs the checks on every pull
-request (`.github/workflows/ci.yml`).
+`bun run test` runs 665 tests in 25 files (285 of them in 7 Worker files), covering the money maths and every worked example in the
+calculation spec, Vault import, sync merge rules, the guide's page structure, the forecast parity against
+`public/data/market-snapshot.json`, the copy rules below, and the Worker's limits and validation. A rule in `datetime.test.ts` fails if
+a component formats a date itself. The Python side runs with `cd ml && python -m pytest -q`. GitHub Actions runs the checks on every
+pull request (`.github/workflows/ci.yml`).
+
+### Words and the copy check
+
+Every word a shopper reads is in `src/locales/en.json` and `src/locales/ms.json`; components never carry text or pick a language by
+hand. [`docs/glossary.md`](docs/glossary.md) fixes one English and one Malay word per idea. `src/locales/copy.test.ts` fails on a key
+missing in one language, a different `{{placeholder}}`, an unused key, a core-screen string over 20 words, a word from the glossary's
+"avoid" list, or text written into a component. Add a string to both files in the same change.
 
 ## Deployment
 
@@ -195,21 +227,23 @@ setup and secrets: [`docs/deploy.md`](docs/deploy.md).
 
 ```
 src/
-  routes/            pages (file-based routing)
-  components/gold/   app components: calculators, charts, Vault, scanner, guide
+  routes/            pages (file-based routing): /, /dashboard, /vault, /more, /settings, /countries, /markets, /dca
+  components/gold/   app components: calculators, charts, Vault, scanner, dock, settings
+  components/gold/guide/   the guide book: structure, pages, dialog, opener, worked example
   components/ui/     shadcn / Radix primitives
-  lib/               pricing maths (gold.ts), state (gold-store.tsx), sync, scanner client, dates
+  lib/               pricing maths (gold.ts), state (gold-store.tsx), dock rules, sync, scanner client, dates
   lib/forecast/      snapshot loader, features and volatility bands (TypeScript port)
-  locales/           en.json, ms.json
-public/              icons, manifest, bundled snapshot, model files
+  locales/           en.json, ms.json and the copy check
+public/              icons, manifest, screenshots, bundled snapshot, model files
 workers/paun-api/    backend Worker: spot feed, scanner, accounts, sync
   migrations/        SQL for the account and sync tables
   eval/              scanner accuracy runner
 ml/                  Python training, evaluation and the daily snapshot job
-docs/                deploy guide, calculation spec, glossary, research, archived plans
+docs/                deploy guide, calculation spec, glossary, guide sources, research, archived plans
 .github/workflows/   CI and the daily snapshot
-PLAN.md              what Paun is for, decisions, phases
+PLAN.md              what Paun is for, decisions, phases, lessons
 AGENTS.md            rules for contributors and coding agents
+roadmap.md           the earlier feature checklist, kept for history
 ```
 
 ## Privacy and security
@@ -218,7 +252,7 @@ AGENTS.md            rules for contributors and coding agents
 - **If you sign in with Google** (optional): Paun keeps your Google account id, name, email and photo link, plus the Vault pieces,
   preferences and watchlist you sync. It keeps no Google tokens and never your Google password. You can delete the account and
   everything synced from Settings.
-- **Never synced:** the gold price you set, the GoldAPI key, your Gemini key and the calculator's inputs.
+- **Never synced:** the gold price you set, the GoldAPI key, your Gemini key, the dock arrangement and the calculator's inputs.
 - **Receipt photos** are sent through the Worker to Google's Gemini to be read and are not stored by Paun. With Paun's shared key that
   runs on Google's free tier, where Google may use submitted content to improve its products; with your own Gemini key it runs under
   your own Google account's terms. Logs hold status codes and timings only.
@@ -226,19 +260,21 @@ AGENTS.md            rules for contributors and coding agents
 
 ## Limitations and roadmap
 
-- Prices, mark-ups, duties and fees are indicative defaults. Some are assumptions the refocus is replacing with the shop's own board
-  rate (see [`PLAN.md`](PLAN.md)).
+- Prices, mark-ups, duties and fees are indicative defaults. Only Malaysia, Singapore, the UAE and India's rates are sourced
+  ([`docs/research/gold-pricing-2026-10.md`](docs/research/gold-pricing-2026-10.md)); the rest of the country list is indicative and
+  editable.
 - The gold price is the daily close of gold futures (not spot); the shared near-live price appears on the landing page only.
-- There is no offline mode; the installed app needs a connection.
+- There is no offline mode: the installed app needs a connection, and says so when it drops.
 - The receipt scanner is a Beta: check every field. Handwritten amounts are sometimes misread.
 - Sign-in is still in Google's testing mode, so the account block is hidden unless you add `?accounts=1`.
-- Some screens still contain English that is not yet in the Malay file.
-- Next: the phases in [`PLAN.md`](PLAN.md): a plain-language calculation spec, one calculation engine, a decluttered app with a More
-  page, a rewritten guide, and mobile and PWA polish.
+- Page titles and the share-preview text are in English only; everything on screen is in both languages.
+- The Malay wording is a first draft until the glossary is approved.
+- The dock arrangement is stored per device.
 
 ## Issues and credits
 
 Report bugs and ideas at <https://github.com/PravinRaj01/paun/issues>.
 
 Price data comes from Yahoo Finance (gold futures and exchange rates) and, as a budgeted backup, GoldAPI. The forecast inputs also use
-FRED. Receipt reading uses Google's Gemini; abuse protection is Cloudflare Turnstile.
+FRED. Receipt reading uses Google's Gemini; abuse protection is Cloudflare Turnstile. The guide book uses the open-source
+[StPageFlip](https://github.com/Nodlik/StPageFlip) library.
