@@ -56,7 +56,8 @@ async function main() {
   const vars = readVars(resolve("workers/paun-api/.dev.vars"));
   const key = vars["GEMINI_API_KEY"];
   if (!key) throw new Error("GEMINI_API_KEY is missing from workers/paun-api/.dev.vars");
-  const model = vars["GEMINI_MODEL"] || DEFAULT_MODEL;
+  // GEMINI_MODEL in the environment wins, so a model can be tried without editing .dev.vars: GEMINI_MODEL=gemini-x bun run eval:scan
+  const model = process.env["GEMINI_MODEL"] || vars["GEMINI_MODEL"] || DEFAULT_MODEL;
   const expected = JSON.parse(readFileSync(join(dir, "expected.json"), "utf8")) as Record<string, Partial<Record<Field, unknown>>>;
   const photos = readdirSync(dir).filter((f) => MIME[extname(f).toLowerCase()]).sort();
   console.log(`Model ${model}, ${photos.length} photos in ${dir}\n`);

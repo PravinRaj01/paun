@@ -86,7 +86,7 @@ One-time setup, by you (never paste a secret in chat, a file or a commit):
    **Turn on billing for the key's project before real users scan receipts:** on the free tier Google may use submitted content to improve its products; on the paid tier it does not.
 2. **Turnstile secret** (from the widget you created): `bunx wrangler secret put TURNSTILE_SECRET -c workers/paun-api/wrangler.jsonc`.
    The widget's *site key* is public and goes in the page code, not here.
-3. Optional variables in `wrangler.jsonc`: `GEMINI_MODEL`, `SCAN_DAILY_CAP` (200 scans a day for everyone), `SCAN_PER_VISITOR_HOUR` (10).
+3. Optional variables in `wrangler.jsonc`: `GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL` (tried once when the first model answers 5xx, times out or cannot be reached; `none` turns it off), `SCAN_DAILY_CAP` (200 scans a day for everyone), `SCAN_PER_VISITOR_HOUR` (10).
 
 Front end: the Vault page's **Scan receipt** button talks to `https://paun-api.paun-gold.workers.dev/scan` with the public Turnstile site key (both in `src/lib/scan.ts`).
 To test locally without the real widget, run the Worker (`bun run dev:api`, with `--var TURNSTILE_SECRET:1x0000000000000000000000000000000AA`) and the site with
