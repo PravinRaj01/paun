@@ -1,22 +1,24 @@
 import { useRef, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { AnimatePresence, motion, useMotionValue, useSpring, useTransform, type MotionValue } from "motion/react";
-import { BookOpen, Vault, Calculator, LayoutGrid, Settings2, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { ModeToggle } from "./ModeToggle";
 import { BasisBadge } from "./BasisBadge";
 import { GoldGuide } from "./GoldGuide";
+import { useGold } from "@/lib/gold-store";
 import { useI18n } from "@/lib/i18n";
-import { activeNav } from "@/lib/nav";
+import { activeDock, PAGE_PATH, type DockId } from "@/lib/dock";
+import { DOCK_ITEMS } from "./dock-registry";
 
-type Item = { to: string; label: string; icon: LucideIcon; kind: "link" | "btn" | "view" | "guide" };
+type Item = { id: DockId; to: string; label: string; icon: LucideIcon; kind: "link" | "view" | "guide" };
 
 const BASE = 40;
 const BASE_COMPACT = 36; // the horizontal (phone) dock: the icons must fit a 360px-wide screen
 const MAX = 64;
 const RANGE = 140;
 
-function DockIcon({ item, pointer, vertical, active, onSettings, onView, onGuide }: {
-  item: Item; pointer: MotionValue<number>; vertical: boolean; active: boolean; onSettings: () => void; onView: () => void; onGuide: () => void;
+function DockIcon({ item, pointer, vertical, active, onView, onGuide }: {
+  item: Item; pointer: MotionValue<number>; vertical: boolean; active: boolean; onView: () => void; onGuide: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState(false);
@@ -54,23 +56,21 @@ function DockIcon({ item, pointer, vertical, active, onSettings, onView, onGuide
   );
   return item.kind === "link"
     ? <Link to={item.to} aria-label={item.label}>{body}</Link>
-    : <button type="button" onClick={item.kind === "view" ? onView : item.kind === "guide" ? onGuide : onSettings} aria-label={item.label}>{body}</button>;
+    : <button type="button" onClick={item.kind === "view" ? onView : onGuide} aria-label={item.label}>{body}</button>;
 }
 
-function Dock({ vertical, onSettings, className }: { vertical: boolean; onSettings: () => void; className: string }) {
+function Dock({ vertical, className }: { vertical: boolean; className: string }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const pointer = useMotionValue(Infinity);
   const [view, setView] = useState(false);
   const [guide, setGuide] = useState(false);
   const { language, setLanguage, t } = useI18n();
-  const items: Item[] = [
-    { to: "/dashboard", label: t("navCheck"), icon: Calculator, kind: "link" },
-    { to: "/vault", label: t("navVault"), icon: Vault, kind: "link" },
-    { to: "/more", label: t("navMore"), icon: LayoutGrid, kind: "link" },
-    { to: "", label: t("guide"), icon: BookOpen, kind: "guide" },
-    { to: "", label: t("viewOptions"), icon: SlidersHorizontal, kind: "view" },
-    { to: "", label: t("settings"), icon: Settings2, kind: "btn" },
-  ];
+  const { dock } = useGold();
+  const items: Item[] = dock.map((id) => {
+    const d = DOCK_ITEMS[id];
+    const to = PAGE_PATH[id];
+    return { id, to: to ?? "", label: t(d.label), icon: d.icon, kind: to ? "link" : id === "view" ? "view" : "guide" };
+  });
   const move = (e: React.PointerEvent) => pointer.set(vertical ? e.clientY : e.clientX);
   return (
     <>
@@ -112,8 +112,8 @@ function Dock({ vertical, onSettings, className }: { vertical: boolean; onSettin
       className={`z-30 flex rounded-3xl border bg-card/70 p-2 shadow-2xl backdrop-blur-xl ${vertical ? "flex-col items-start gap-2.5" : "items-end gap-1.5"} ${className}`}
       style={{ touchAction: "none" }}>
       {items.map((it) => (
-        <DockIcon key={it.label} item={it} pointer={pointer} vertical={vertical}
-          active={(it.kind === "link" && (it.to === "/more" ? activeNav(path) === "more" : path.startsWith(it.to))) || (it.kind === "view" && view) || (it.kind === "guide" && guide)} onSettings={onSettings} onView={() => setView((v) => !v)} onGuide={() => setGuide(true)} />
+        <DockIcon key={it.id} item={it} pointer={pointer} vertical={vertical}
+          active={(it.kind === "link" && activeDock(path, dock) === it.id) || (it.kind === "view" && view) || (it.kind === "guide" && guide)} onView={() => setView((v) => !v)} onGuide={() => setGuide(true)} />
       ))}
     </nav>
     <GoldGuide open={guide} onOpenChange={setGuide} />
@@ -121,11 +121,11 @@ function Dock({ vertical, onSettings, className }: { vertical: boolean; onSettin
   );
 }
 
-export function SideDock({ onSettings }: { onSettings: () => void }) {
+export function SideDock() {
   return (
     <>
-      <Dock vertical onSettings={onSettings} className="fixed left-3 top-1/2 hidden -translate-y-1/2 md:flex" />
-      <Dock vertical={false} onSettings={onSettings}
+      <Dock vertical className="fixed left-3 top-1/2 hidden -translate-y-1/2 md:flex" />
+      <Dock vertical={false}
         className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 md:hidden" />
     </>
   );
