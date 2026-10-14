@@ -19,6 +19,10 @@ supports. "Research" is [`docs/research/gold-pricing-2026-10.md`](research/gold-
 | Bank gold accounts | 999.9, no upah, gap about 1% to 5.5%, several cash-only; Public Gold about 7.5% | Research section 6 |
 | Before you buy | Ask for rate, upah, buy-back rate; weight × rate + upah matches the total | Spec section 3 |
 | Before you sell | Ask several shops for buy-back or susut and any fee; compare payouts; upah does not come back | Research sections 2 and 3; Spec section 4 |
+| A worked example | 10 g of 916 at RM 525 plus RM 150 upah is RM 5,400; sold back at RM 495 it is RM 4,950; RM 450 down | The rates: Research section 1 (boards about 524 sell and 495 buy-back, October 2026). The sums: `buyCheck` in `src/lib/gold.ts`, pinned by `guide/topics.test.ts` |
+| Words you will hear | upah, susut, buy-back rate, trade-in, shop mark-up, one line each | `docs/glossary.md`; Research sections 2 and 3 |
+| The "Ask" box on each topic | Questions to put to the shop, not claims | Each pairs with its topic's source above |
+| Contents, how to use, chapter pages | Structure only; the four jobs are the app's own | `PLAN.md` section 1 |
 
 ## Not claimed
 

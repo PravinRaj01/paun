@@ -1,4 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { BookOpen } from "lucide-react";
+import { useGuide } from "./guide/guide-context";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -85,4 +87,14 @@ export function Row({ label, value, strong, tone }: { label: ReactNode; value: R
 export function Verdict({ tone, children }: { tone: "good" | "warn" | "info"; children: ReactNode }) {
   const cls = tone === "good" ? "border-success/40 text-success" : tone === "warn" ? "border-primary/40 text-gold" : "bg-card";
   return <div className={`rounded-lg border p-4 text-center text-sm sm:text-base ${cls}`}>{children}</div>;
+}
+
+/** A small link under a result that opens the guide at the page that explains it. */
+export function GuideLink({ topic, label }: { topic: "upah" | "susut" | "buy"; label: string }) {
+  const guide = useGuide();
+  return (
+    <button type="button" onClick={() => guide.open(topic)} className="inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-2 hover:text-gold hover:underline">
+      <BookOpen className="h-3 w-3" aria-hidden /> {label}
+    </button>
+  );
 }

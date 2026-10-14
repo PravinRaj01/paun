@@ -13,6 +13,7 @@ import type { ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { GoldProvider, useGold } from "../lib/gold-store";
 import { useI18n } from "../lib/i18n";
+import { GuideProvider } from "../components/gold/guide/guide-context";
 import { Toaster } from "../components/ui/sonner";
 
 function NotFoundComponent() {
@@ -123,8 +124,10 @@ function RootShell({ children }: { children: ReactNode }) {
       </head>
       <body>
         <GoldProvider>
-          {children}
-          <ThemedToaster />
+          <GuideProvider>
+            {children}
+            <ThemedToaster />
+          </GuideProvider>
         </GoldProvider>
         <Scripts />
       </body>
