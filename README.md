@@ -136,7 +136,7 @@ sequenceDiagram
   G-->>W: Pieces, weights, purity, upah, date, total
   W->>W: Validate every field, null if unsure
   W-->>B: Fields only (the photo is never stored)
-  B-->>U: Review panel; nothing is saved until you confirm
+  B-->>U: Review panel, nothing is saved until you confirm
 ```
 
 ## Tech stack
