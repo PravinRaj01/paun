@@ -10,9 +10,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const actions = useMemo(() => ({ openSettings: () => setOpen(true) }), []);
   return (
     <ShellContext.Provider value={actions}>
-      <div className="min-h-screen pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-0 md:pl-24">
-        <SpotBar />
-        <SideDock />
+      <div className="min-h-screen pb-[calc(7rem+env(safe-area-inset-bottom))] md:pb-0 md:pl-24">
+        <SpotBar onSettings={() => setOpen(true)} />
+        <SideDock onSettings={() => setOpen(true)} />
         <main className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8">{children}</main>
         <SettingsDialog open={open} onOpenChange={setOpen} />
         <VaultSyncRunner />

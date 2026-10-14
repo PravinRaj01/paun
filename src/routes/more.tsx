@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronRight, Download, Globe2, LineChart, PiggyBank, Settings2, Shuffle } from "lucide-react";
+import { ChevronRight, Download, LineChart, PiggyBank, Settings2, Shuffle } from "lucide-react";
 import { AppShell } from "@/components/gold/AppShell";
 import { ModeToggle } from "@/components/gold/ModeToggle";
 import { useShell } from "@/components/gold/shell-context";
@@ -48,7 +48,6 @@ function MoreContent() {
     { to: "/markets", icon: LineChart, title: t("moreMarkets"), hint: t("moreMarketsHint") },
     { to: "/dca", icon: PiggyBank, title: t("moreDca"), hint: t("moreDcaHint") },
     { to: "/countries", icon: Shuffle, title: t("moreCountries"), hint: t("moreCountriesHint") },
-    { to: "/world", icon: Globe2, title: t("moreWorld"), hint: t("moreWorldHint") },
   ] as const;
 
   return (
