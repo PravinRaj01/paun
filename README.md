@@ -55,6 +55,7 @@ The app grew past these into trader features; [`PLAN.md`](PLAN.md) records the r
 | **My gold** (`/vault`) | Your pieces with value now, profit and loss, the price you paid kept in the currency you paid it; JSON export and import; **receipt scanner** (Beta) |
 | **Guide** | Bilingual explainer: how a jewellery price is built, *upah*, melting deductions, purity, the *paun* unit |
 | **More** (`/more`) | Price history and a next-week range (`/markets`), a monthly plan (`/dca`), compare countries (`/countries`), language, Simple / Pro and settings |
+| **Settings** (`/settings`) | The gold price, display currency, decimals, the optional GoldAPI and Gemini keys, and **Your dock**: choose which pages sit in the dock bar and in what order, the rest go under More (our six are the default) |
 | **Simple / Pro** | Simple shows the answer; Pro shows more detail and the country list you can edit |
 | **Optional sign-in** | Google sign-in keeps the Vault, preferences and watchlist in step across devices; hidden behind `?accounts=1` while it is tested |
 | **Installable** | Web app manifest, so it can be added to a phone's home screen; online only |
