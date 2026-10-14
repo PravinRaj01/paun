@@ -124,7 +124,7 @@ export const DEFAULT_COUNTRIES: Country[] = [
   { id: "my", name: "Malaysia", currency: "MYR", rate: 4.1, duty: 0, tax: 0 },
   { id: "sg", name: "Singapore", currency: "SGD", rate: 1.28, duty: 0, tax: 9 },
   { id: "ae", name: "UAE (Dubai)", currency: "AED", rate: 3.6725, duty: 0, tax: 5 },
-  { id: "in", name: "India", currency: "INR", rate: 96, duty: 6, tax: 3 },
+  { id: "in", name: "India", currency: "INR", rate: 96, duty: 15, tax: 3 },
 ];
 
 /**
@@ -148,11 +148,24 @@ export function effectiveRate(c: Pick<Country, "currency" | "rate">, marketFx: R
 /** The per-country shop margins this app used to ship (Malaysia 6%, the rest 3%). They had no source; the one 5% assumption replaces them. */
 const LEGACY_SHIPPED_PREMIUMS: Record<string, number> = { my: 6, sg: 3, ae: 3, in: 3 };
 
-/** A watchlist country as it should be used: market exchange rate unless the person set their own, and no retired default margin. */
+/**
+ * Import duty defaults that have been replaced, by currency. A duty that still equals a retired one was never edited by the person,
+ * so it follows the current default. India's went from 6% to 15% on 13 May 2026 (Notification 17/2026-Customs); the saved 6% is the
+ * old shipped value, not a choice.
+ */
+const CURRENT_DUTY: Record<string, number> = { INR: 15 };
+const RETIRED_DUTIES: Record<string, readonly number[]> = { INR: [6] };
+
+/**
+ * A watchlist country as it should be used: market exchange rate unless the person set their own, no retired default margin, and
+ * no retired default import duty.
+ */
 export function effectiveCountry(c: Country, marketFx: Record<string, number> | null | undefined): Country {
   const { premium, ...rest } = c;
   const retired = premium !== undefined && LEGACY_SHIPPED_PREMIUMS[c.id] === premium;
-  return { ...rest, rate: effectiveRate(c, marketFx), ...(premium !== undefined && !retired ? { premium } : {}) };
+  const currentDuty = CURRENT_DUTY[c.currency];
+  const duty = currentDuty !== undefined && (RETIRED_DUTIES[c.currency] ?? []).includes(c.duty) ? currentDuty : c.duty;
+  return { ...rest, rate: effectiveRate(c, marketFx), duty, ...(premium !== undefined && !retired ? { premium } : {}) };
 }
 
 export const DEFAULT_TRADE: Trade = {
