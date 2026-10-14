@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronRight, Download, LineChart, PiggyBank, Settings2, Shuffle } from "lucide-react";
+import { ChevronRight, Download, Settings2 } from "lucide-react";
 import { AppShell } from "@/components/gold/AppShell";
+import { DOCK_ITEMS } from "@/components/gold/dock-registry";
+import { GoldGuide } from "@/components/gold/GoldGuide";
 import { ModeToggle } from "@/components/gold/ModeToggle";
-import { useShell } from "@/components/gold/shell-context";
 import { Button } from "@/components/ui/button";
+import { inMore, PAGE_PATH } from "@/lib/dock";
+import { useGold } from "@/lib/gold-store";
 import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/more")({
@@ -30,10 +33,10 @@ function MorePage() {
   );
 }
 
-// inside the shell, so that the Settings button reaches the shell's dialog
 function MoreContent() {
   const { t, language, setLanguage } = useI18n();
-  const { openSettings } = useShell();
+  const { dock } = useGold();
+  const [guide, setGuide] = useState(false);
   const [install, setInstall] = useState<BIPEvent | null>(null);
   useEffect(() => {
     const h = (e: Event) => {
@@ -44,11 +47,23 @@ function MoreContent() {
     return () => window.removeEventListener("beforeinstallprompt", h);
   }, []);
 
-  const tools = [
-    { to: "/markets", icon: LineChart, title: t("moreMarkets"), hint: t("moreMarketsHint") },
-    { to: "/dca", icon: PiggyBank, title: t("moreDca"), hint: t("moreDcaHint") },
-    { to: "/countries", icon: Shuffle, title: t("moreCountries"), hint: t("moreCountriesHint") },
-  ] as const;
+  // whatever is not in the dock (the person chooses in Settings which pages those are; by default price history, the monthly plan
+  // and compare countries)
+  const rows = inMore(dock).map((id) => {
+    const d = DOCK_ITEMS[id];
+    return { id, icon: d.icon, to: PAGE_PATH[id], title: t(d.moreTitle ?? d.label), hint: d.moreHint ? t(d.moreHint) : "" };
+  });
+
+  const body = (r: (typeof rows)[number]) => (
+    <>
+      <r.icon className="h-5 w-5 shrink-0 text-gold" aria-hidden />
+      <span className="min-w-0 flex-1 text-left">
+        <span className="block font-medium">{r.title}</span>
+        {r.hint && <span className="block text-sm text-muted-foreground">{r.hint}</span>}
+      </span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+    </>
+  );
 
   return (
     <div className="mx-auto max-w-xl space-y-8">
@@ -57,20 +72,25 @@ function MoreContent() {
         <p className="text-sm text-muted-foreground">{t("moreHint")}</p>
       </div>
 
-      <ul className="divide-y rounded-lg border bg-card">
-        {tools.map((x) => (
-          <li key={x.to}>
-            <Link to={x.to} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50">
-              <x.icon className="h-5 w-5 shrink-0 text-gold" aria-hidden />
-              <span className="min-w-0 flex-1">
-                <span className="block font-medium">{x.title}</span>
-                <span className="block text-sm text-muted-foreground">{x.hint}</span>
-              </span>
-              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-            </Link>
-          </li>
-        ))}
-      </ul>
+      {rows.length ? (
+        <ul className="divide-y rounded-lg border bg-card">
+          {rows.map((r) => (
+            <li key={r.id}>
+              {r.to ? (
+                <Link to={r.to} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50">
+                  {body(r)}
+                </Link>
+              ) : (
+                <button type="button" onClick={() => setGuide(true)} className="flex w-full items-center gap-3 px-4 py-3 hover:bg-muted/50">
+                  {body(r)}
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">{t("moreEmpty")}</p>
+      )}
 
       <section className="space-y-4 rounded-lg border bg-card p-4">
         <div className="space-y-1.5">
@@ -92,8 +112,10 @@ function MoreContent() {
           <div className="text-xs uppercase tracking-wider text-muted-foreground">{t("experience")}</div>
           <ModeToggle />
         </div>
-        <Button variant="outline" className="w-full justify-start" onClick={openSettings}>
-          <Settings2 className="mr-2 h-4 w-4" /> {t("moreOpenSettings")}
+        <Button asChild variant="outline" className="w-full justify-start">
+          <Link to="/settings">
+            <Settings2 className="mr-2 h-4 w-4" /> {t("moreOpenSettings")}
+          </Link>
         </Button>
         {install && (
           <Button variant="outline" className="w-full justify-start" onClick={() => install.prompt().then(() => setInstall(null))}>
@@ -101,6 +123,7 @@ function MoreContent() {
           </Button>
         )}
       </section>
+      <GoldGuide open={guide} onOpenChange={setGuide} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import type React from "react";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getSnapshot } from "./forecast/snapshot";
+import { DEFAULT_DOCK, normalizeDock, type DockId } from "./dock";
 import { clearGeminiKey } from "./gemini-key";
 import {
   baseRateOf,
@@ -50,6 +51,9 @@ type Store = {
   setTrade: (t: Trade | ((p: Trade) => Trade)) => void;
   excluded: string[]; // country ids left out of the spread & arbitrage comparison
   setExcluded: (e: string[] | ((p: string[]) => string[])) => void;
+  /** What sits in the dock and in what order (always valid; see src/lib/dock.ts). Kept on this device. */
+  dock: DockId[];
+  setDock: (d: DockId[] | ((p: DockId[]) => DockId[])) => void;
   vault: VaultItem[];
   setVault: (v: VaultItem[] | ((p: VaultItem[]) => VaultItem[])) => void;
   hydrated: boolean; // saved settings have been read from this browser (before that, defaults are shown)
@@ -75,6 +79,8 @@ export function GoldProvider({ children }: { children: ReactNode }) {
   const [trade, setTrade] = usePersisted("trade", DEFAULT_TRADE);
   const [excluded, setExcluded] = usePersisted<string[]>("excluded", []);
   const [vault, setVault, vaultLoaded] = usePersisted<VaultItem[]>("vault", []);
+  const [dockSaved, setDock] = usePersisted<DockId[]>("dock", [...DEFAULT_DOCK]);
+  const dock = useMemo(() => normalizeDock(dockSaved), [dockSaved]);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   // Pieces saved before the price paid was kept in its own currency get it filled in once, from the rate the person had saved (not the
@@ -136,11 +142,12 @@ export function GoldProvider({ children }: { children: ReactNode }) {
     setCountries(DEFAULT_COUNTRIES);
     setTrade(DEFAULT_TRADE);
     setExcluded([]);
+    setDock([...DEFAULT_DOCK]);
   };
 
   return (
     <Ctx.Provider
-      value={{ settings, setSettings, countries, rawCountries, setCountries, marketFx, trade, setTrade, excluded, setExcluded, vault, setVault, hydrated, priceUnavailable, theme, toggleTheme, resetAll }}
+      value={{ settings, setSettings, countries, rawCountries, setCountries, marketFx, trade, setTrade, excluded, setExcluded, dock, setDock, vault, setVault, hydrated, priceUnavailable, theme, toggleTheme, resetAll }}
     >
       {children}
     </Ctx.Provider>
