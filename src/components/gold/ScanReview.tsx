@@ -79,7 +79,7 @@ export function ScanReview({
               <div className="grid gap-3 sm:grid-cols-6">
                 <div className="space-y-1.5 sm:col-span-3">
                   <Label>{t("itemName")}</Label>
-                  <Input value={row.name} onChange={(e) => patch(row.id, { name: e.target.value })} placeholder="Rantai 916" />
+                  <Input value={row.name} onChange={(e) => patch(row.id, { name: e.target.value })} placeholder={t("piecePlaceholder")} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>{t("weight")}</Label>

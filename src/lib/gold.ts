@@ -179,7 +179,6 @@ export type Basis = Settings["priceBasis"];
 /** One labelled assumption for the shop's margin over metal (country views only): Malaysian posted 916 rates cluster at +3% to +6%. */
 export const DEFAULT_RETAIL_MARGIN_PCT = 5;
 export const premiumOf = (c: Country, basis: Basis = "retail") => (basis === "retail" ? (c.premium ?? DEFAULT_RETAIL_MARGIN_PCT) : 0);
-export const BASIS_LABEL: Record<Basis, string> = { raw: "Raw spot", retail: "Shop price" };
 
 /** Local units per 1 USD for the display currency. Falls back to the manual rate. */
 export function baseRateOf(settings: Settings, countries: Country[]): number {

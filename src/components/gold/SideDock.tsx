@@ -106,7 +106,7 @@ function Dock({ vertical, className }: { vertical: boolean; className: string })
         </>
       )}
     </AnimatePresence>
-    <nav aria-label="Main"
+    <nav aria-label={t("navMain")}
       onPointerMove={move} onPointerDown={move}
       onPointerLeave={() => pointer.set(Infinity)} onPointerUp={(e) => e.pointerType !== "mouse" && pointer.set(Infinity)}
       className={`z-30 flex rounded-3xl border bg-card/70 p-2 shadow-2xl backdrop-blur-xl ${vertical ? "flex-col items-start gap-2.5" : "items-end gap-1.5"} ${className}`}

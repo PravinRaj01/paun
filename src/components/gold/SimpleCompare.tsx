@@ -6,7 +6,7 @@ import { useI18n } from "@/lib/i18n";
 /** Plain-language "where is it cheapest" ranking for Simple mode. */
 export function SimpleCompare({ title }: { title?: string }) {
   const { countries, trade, settings } = useGold();
-  const { language } = useI18n();
+  const { t } = useI18n();
   const base = baseRateOf(settings, countries);
   const basis = settings.priceBasis ?? "retail";
   const rows = countries
@@ -17,9 +17,9 @@ export function SimpleCompare({ title }: { title?: string }) {
   return (
     <section className="space-y-4">
       <div>
-        <div className="flex flex-wrap items-center gap-2"><h2 className="font-display text-2xl">{title ?? (language === "ms" ? "Di mana emas paling murah?" : "Where is gold cheapest?")}</h2><BasisBadge /></div>
+        <div className="flex flex-wrap items-center gap-2"><h2 className="font-display text-2xl">{title ?? t("whereCheapest")}</h2><BasisBadge /></div>
         <p className="text-sm text-muted-foreground">
-           {language === "ms" ? `Harga untuk ${trade.weight} g emas ${purityLabel(normPurity(trade.purity))}, termasuk cukai. Ubah butiran di halaman Kalkulator.` : `Price for ${trade.weight} g of ${purityLabel(normPurity(trade.purity))} gold, including taxes. Change the gold on the Calculator page.`}
+           {t("countryRough", { weight: trade.weight, purity: purityLabel(normPurity(trade.purity)) })}
         </p>
       </div>
       <ol className="space-y-2">
@@ -29,7 +29,7 @@ export function SimpleCompare({ title }: { title?: string }) {
               <div className="min-w-0">
                 <div className="truncate font-medium">{i + 1}. {c.name}</div>
                 <div className="text-xs text-muted-foreground">
-                   {i === 0 ? (language === "ms" ? "Termurah dalam senarai" : "Cheapest on your list") : language === "ms" ? `${fmt((total - min) * base, settings.baseCurrency, 0)} lebih mahal daripada ${rows[0]?.c.name}` : `${fmt((total - min) * base, settings.baseCurrency, 0)} more than ${rows[0]?.c.name}`}
+                   {i === 0 ? t("cheapestList") : t("moreThan", { amount: fmt((total - min) * base, settings.baseCurrency, 0), name: rows[0]?.c.name ?? "" })}
                 </div>
               </div>
               <div className="num shrink-0 text-lg text-gold">{fmt(total * base, settings.baseCurrency, 0)}</div>
@@ -41,7 +41,7 @@ export function SimpleCompare({ title }: { title?: string }) {
           </li>
         ))}
       </ol>
-       {!rows.length && <p className="text-sm text-muted-foreground">{language === "ms" ? "Tambah negara dalam mod Pro untuk membanding." : "Add countries in Pro mode to compare."}</p>}
+       {!rows.length && <p className="text-sm text-muted-foreground">{t("addCountriesPro")}</p>}
     </section>
   );
 }
