@@ -97,7 +97,7 @@ Phase 1 ([#26](https://github.com/PravinRaj01/paun/issues/26)) writes this up in
 | Core (main screens) | More page | Frozen (no new work) | Removed from the UI |
 |---|---|---|---|
 | **Top bar**: price per gram and per ounce, time, source (always visible) | Price history chart | Accounts and sync (merged, behind `?accounts=1`) | Old Arbitrage "A vs B" selects and sortable table (its Buy here / Sell here tiles return, rebuilt, in Check price) |
-| **Check price**: Buy, Sell / trade-in, Buy here / Sell here | Next-week range | Alerts, street rates | 41-country catalog and duty/VAT editor (trimmed to MY, SG, AE, IN) |
+| **Check price**: Buy, Sell / trade-in, Buy here / Sell here | Next-week range | Alerts, street rates | The editable duty/VAT per country on the main screens (the 42-entry catalog stays for the globe and the picker; only MY, SG, AE are sourced, IN is under review in #46) |
 | **My gold** (Vault, receipt scanner in Beta) | Monthly plan | ML research (bench, TFT, regime model) | (none: the raw / shop-price toggle stays in View options) |
 | **Guide** | Compare countries | | First-visit live-price pop-up |
 | | Settings page (price, dock arrangement, GoldAPI key, Gemini key, decimals, export/import); the globe lives on the landing page | | |
@@ -142,7 +142,7 @@ Each phase is one issue, one branch, one PR. Claude does the git steps of the SO
 | 0. Refocus the plan | [#25](https://github.com/PravinRaj01/paun/issues/25) | | this file, README and AGENTS.md match the new direction |
 | 1. Calculation spec | [#26](https://github.com/PravinRaj01/paun/issues/26) | **owner approves before phase 2** | `docs/calculations.md` and `docs/research/` written, every number sourced or labelled an assumption |
 | 2. One engine, bugs fixed | [#27](https://github.com/PravinRaj01/paun/issues/27) | phase 1 approved | L1-L12 fixed; each worked example is a test; one piece gives identical numbers on every page |
-| 3. Declutter | [#28](https://github.com/PravinRaj01/paun/issues/28) | phase 2 merged | Check price tabs, More page, arrangeable dock and Settings page (#41), one set of words and a copy check (#44), then the country list trimmed to MY / SG / AE / IN |
+| 3. Declutter | [#28](https://github.com/PravinRaj01/paun/issues/28) | phase 2 merged | Check price tabs, More page, arrangeable dock and Settings page (#41), one set of words and a copy check (#44), and the country list kept for the globe with sourced rates marked (owner decision 2026-10-14: no trim) |
 | 4. Guide rewrite | [#29](https://github.com/PravinRaj01/paun/issues/29) | phase 1 approved | topics in `en.json` / `ms.json`, scrollable, sourced |
 | 5. Mobile and PWA polish | [#30](https://github.com/PravinRaj01/paun/issues/30) | phase 3 merged | manifest, inputs, dialogs, offline state, acceptance walk-through |
 
