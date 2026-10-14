@@ -17,7 +17,6 @@ import { Route as DcaRouteImport } from './routes/dca'
 import { Route as MarketsRouteImport } from './routes/markets'
 import { Route as MoreRouteImport } from './routes/more'
 import { Route as VaultRouteImport } from './routes/vault'
-import { Route as WorldRouteImport } from './routes/world'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -59,11 +58,6 @@ const VaultRoute = VaultRouteImport.update({
   path: '/vault',
   getParentRoute: () => rootRouteImport,
 } as any)
-const WorldRoute = WorldRouteImport.update({
-  id: '/world',
-  path: '/world',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -74,7 +68,6 @@ export interface FileRoutesByFullPath {
   '/markets': typeof MarketsRoute
   '/more': typeof MoreRoute
   '/vault': typeof VaultRoute
-  '/world': typeof WorldRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -85,7 +78,6 @@ export interface FileRoutesByTo {
   '/markets': typeof MarketsRoute
   '/more': typeof MoreRoute
   '/vault': typeof VaultRoute
-  '/world': typeof WorldRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -97,7 +89,6 @@ export interface FileRoutesById {
   '/markets': typeof MarketsRoute
   '/more': typeof MoreRoute
   '/vault': typeof VaultRoute
-  '/world': typeof WorldRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -110,7 +101,6 @@ export interface FileRouteTypes {
     | '/markets'
     | '/more'
     | '/vault'
-    | '/world'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -121,7 +111,6 @@ export interface FileRouteTypes {
     | '/markets'
     | '/more'
     | '/vault'
-    | '/world'
   id:
     | '__root__'
     | '/'
@@ -132,7 +121,6 @@ export interface FileRouteTypes {
     | '/markets'
     | '/more'
     | '/vault'
-    | '/world'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -144,7 +132,6 @@ export interface RootRouteChildren {
   MarketsRoute: typeof MarketsRoute
   MoreRoute: typeof MoreRoute
   VaultRoute: typeof VaultRoute
-  WorldRoute: typeof WorldRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -205,13 +192,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VaultRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/world': {
-      id: '/world'
-      path: '/world'
-      fullPath: '/world'
-      preLoaderRoute: typeof WorldRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -224,7 +204,6 @@ const rootRouteChildren: RootRouteChildren = {
   MarketsRoute: MarketsRoute,
   MoreRoute: MoreRoute,
   VaultRoute: VaultRoute,
-  WorldRoute: WorldRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

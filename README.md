@@ -50,11 +50,11 @@ The app grew past these into trader features; [`PLAN.md`](PLAN.md) records the r
 
 | Feature | What it does |
 |---|---|
-| **Today** (`/`) | Gold in RM per gram for 999, 916 and 750, with when and where the price is from, and two buttons: check a shop's price, or a sell / trade-in offer |
+| **Landing** (`/`) | The animated globe of gold prices by country, today's price with when and where it is from, and a way into the price check |
 | **Check price** (`/dashboard`) | Three tabs. **Buy:** the shop's rate and upah, does the total add up, gold vs workmanship, what a sell-back would give. **Sell / trade-in:** the shop's buy-back rate or its susut, against its offer. **Buy here / Sell here:** up to four shops, lowest total and highest payout |
 | **My gold** (`/vault`) | Your pieces with value now, profit and loss, the price you paid kept in the currency you paid it; JSON export and import; **receipt scanner** (Beta) |
 | **Guide** | Bilingual explainer: how a jewellery price is built, *upah*, melting deductions, purity, the *paun* unit |
-| **More** (`/more`) | Price history and a next-week range (`/markets`), a monthly plan (`/dca`), compare countries (`/countries`), a world price map (`/world`), language, Simple / Pro and settings |
+| **More** (`/more`) | Price history and a next-week range (`/markets`), a monthly plan (`/dca`), compare countries (`/countries`), language, Simple / Pro and settings |
 | **Simple / Pro** | Simple shows the answer; Pro shows more detail and the country list you can edit |
 | **Optional sign-in** | Google sign-in keeps the Vault, preferences and watchlist in step across devices; hidden behind `?accounts=1` while it is tested |
 | **Installable** | Web app manifest, so it can be added to a phone's home screen; online only |
