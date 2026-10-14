@@ -23,6 +23,20 @@ const state = (over: Partial<SyncState> = {}): SyncState => ({ ...EMPTY_STATE, u
 describe("toSyncItem: only what the server will accept is sent", () => {
   it("keeps a valid piece and its change time", () => expect(toSyncItem(piece("a"), T(9))).toMatchObject({ id: "a", weight: 10, purity: "916", updatedAt: T(1) }));
   it("gives a piece with no change time the fallback", () => expect(toSyncItem(piece("a", { updatedAt: undefined as never }), T(9))!.updatedAt).toBe(T(9)));
+  it("sends the price in its own currency when both fields are whole", () => {
+    expect(toSyncItem(piece("a", { paid: 450, currency: "MYR" }), T(9))).toMatchObject({ paidUsd: 500, paid: 450, currency: "MYR" });
+  });
+  it.each([
+    ["only the amount", { paid: 450 }],
+    ["only the currency", { currency: "MYR" }],
+    ["a currency that is not three capitals", { paid: 450, currency: "ringgit" }],
+    ["a negative amount", { paid: -5, currency: "MYR" }],
+  ])("sends the piece without its own-currency price when it has %s (the piece itself is still sent)", (_n, over) => {
+    const s = toSyncItem(piece("a", over), T(9));
+    expect(s).not.toBeNull();
+    expect(s).not.toHaveProperty("paid");
+    expect(s).not.toHaveProperty("currency");
+  });
   it("shortens a long name instead of refusing the piece", () => expect(toSyncItem(piece("a", { name: "x".repeat(200) }), T(9))!.name).toHaveLength(80));
   it.each([
     ["an id with odd characters", { id: "../x" }],

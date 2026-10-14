@@ -8,7 +8,18 @@ export const MAX_ITEMS = 2000; // pieces per account
 export const MAX_BODY_CHARS = 512_000; // per request
 export const SYNC_PER_HOUR = 120; // per account
 
-export type SyncItem = { id: string; name: string; weight: number; purity: PurityId; paidUsd: number; date: string; updatedAt: string };
+export type SyncItem = {
+  id: string;
+  name: string;
+  weight: number;
+  purity: PurityId;
+  paidUsd: number;
+  /** The price in the currency it was paid in. Both or neither; absent from pieces saved by an older app version. */
+  paid?: number;
+  currency?: string;
+  date: string;
+  updatedAt: string;
+};
 export type Removal = { id: string; deletedAt: string };
 /** Preferences that follow the account. A whitelist: nothing else (no price, no key, no calculator input) can be stored. */
 export type PrefsValue = {
@@ -123,14 +134,21 @@ export function validateWatchlist(raw: unknown): WatchlistValue | null {
 
 function item(raw: unknown, now: Date): SyncItem | null {
   if (!isObject(raw)) return null;
-  const { id, name, weight, purity, paidUsd, date, updatedAt } = raw;
+  const { id, name, weight, purity, paidUsd, paid, currency, date, updatedAt } = raw;
   const at = isoOf(updatedAt, now);
   if (typeof id !== "string" || !ID.test(id) || typeof name !== "string" || name.length > 80) return null;
   if (typeof weight !== "number" || !Number.isFinite(weight) || weight <= 0 || weight > 10_000) return null;
   if (typeof purity !== "string" || !(PURITY_IDS as readonly string[]).includes(purity)) return null;
   if (typeof paidUsd !== "number" || !Number.isFinite(paidUsd) || paidUsd < 0 || paidUsd > 1_000_000_000) return null;
   if (typeof date !== "string" || !isRealDate(date) || !at) return null;
-  return { id, name, weight, purity: purity as PurityId, paidUsd, date, updatedAt: at };
+  // the price in its own currency: both fields or neither, and each must be sane (a half-valid pair is refused, not half-stored)
+  let own: { paid: number; currency: string } | null = null;
+  if (paid !== undefined || currency !== undefined) {
+    if (typeof paid !== "number" || !Number.isFinite(paid) || paid < 0 || paid > 1_000_000_000_000) return null;
+    if (typeof currency !== "string" || !/^[A-Z]{3}$/.test(currency)) return null;
+    own = { paid, currency };
+  }
+  return { id, name, weight, purity: purity as PurityId, paidUsd, ...(own ?? {}), date, updatedAt: at };
 }
 function removal(raw: unknown, now: Date): Removal | null {
   if (!isObject(raw)) return null;

@@ -2,17 +2,23 @@ import { useI18n } from "@/lib/i18n";
 import { BuyCheck } from "./BuyCheck";
 import { CompareQuotes } from "./CompareQuotes";
 import { NumField, PurityPicker } from "./check-ui";
-import { useCheck } from "./use-check";
 import { SellCheck } from "./SellCheck";
+import { useCheck } from "./use-check";
 
 const TABS = ["buy", "sell", "compare"] as const;
 
-/** The price check: one piece (weight and purity), then Buy, Sell / trade-in, or Buy here / Sell here. */
+/** The price check: pick Buy, Sell / trade-in or Buy here / Sell here, say what the piece is, then fill in what the shop told you. */
 export function TradeAnalyzer() {
   const { trade, setTrade } = useCheck();
   const { t } = useI18n();
   const side = trade.side ?? "buy";
   const label = (k: (typeof TABS)[number]) => (k === "buy" ? t("buy") : k === "sell" ? t("sell") : t("compareTab"));
+  const head =
+    side === "sell"
+      ? { title: t("sellTitle"), hint: t("sellHint") }
+      : side === "compare"
+        ? { title: t("compareTitle"), hint: t("compareHint") }
+        : { title: t("checkPrice"), hint: t("buyHint") };
   return (
     <div className="space-y-4">
       <div className="inline-flex flex-wrap rounded-full border bg-card p-0.5 text-sm">
@@ -26,6 +32,11 @@ export function TradeAnalyzer() {
             {label(k)}
           </button>
         ))}
+      </div>
+
+      <div>
+        <h2 className="font-display text-2xl">{head.title}</h2>
+        <p className="text-sm text-muted-foreground">{head.hint}</p>
       </div>
 
       <div className="grid gap-4 rounded-lg border bg-card p-4 sm:grid-cols-2 sm:p-5">

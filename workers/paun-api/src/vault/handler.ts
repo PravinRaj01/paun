@@ -73,7 +73,16 @@ export async function handleSync(
     const body: SyncResponse = {
       ok: true,
       version: rows.reduce((top, r) => Math.max(top, r.version), since),
-      items: rows.filter((r) => r.deletedAt === null).map((r) => ({ id: r.id, name: r.name, weight: r.weight, purity: r.purity, paidUsd: r.paidUsd, date: r.date, updatedAt: r.updatedAt })),
+      items: rows.filter((r) => r.deletedAt === null).map((r) => ({
+        id: r.id,
+        name: r.name,
+        weight: r.weight,
+        purity: r.purity,
+        paidUsd: r.paidUsd,
+        ...(r.paid !== null && r.currency !== null ? { paid: r.paid, currency: r.currency } : {}),
+        date: r.date,
+        updatedAt: r.updatedAt,
+      })),
       removed: rows.filter((r) => r.deletedAt !== null).map((r) => ({ id: r.id, deletedAt: r.deletedAt! })),
       prefs: stored.prefs,
       watchlist: stored.watchlist,

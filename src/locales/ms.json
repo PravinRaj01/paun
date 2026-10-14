@@ -346,5 +346,9 @@
   "compareFoot": "Jual di sini hanya mengira kedai yang memberi kadar beli balik. Upah tidak pernah dipulangkan.",
   "countryRough": "Harga kasar untuk {{weight}} g {{purity}} di kaunter setiap negara.",
   "priceGap": "Beza antara termurah dan termahal",
-  "countryNote": "Anggaran kasar dengan andaian untung kedai 5%. Ini bukan sebut harga, dan menjual emas di luar negara jarang praktikal. Gunakan Beli di sini / Jual di sini dalam semakan harga untuk membandingkan kedai sebenar."
+  "countryNote": "Anggaran kasar dengan andaian untung kedai 5%. Ini bukan sebut harga, dan menjual emas di luar negara jarang praktikal. Gunakan Beli di sini / Jual di sini dalam semakan harga untuk membandingkan kedai sebenar.",
+  "paidConvertedNote": "Harga yang dibayar dalam mata wang lain ditunjukkan pada kadar tukaran hari ini (ditanda ≈).",
+  "quoteRate": "Kadar jual setiap gram ({{cur}})",
+  "quoteBuyBack": "Beli balik setiap gram ({{cur}})",
+  "sellMore": "Kedai menyebut susut, atau anda tukar tambah"
 }

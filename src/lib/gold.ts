@@ -17,10 +17,14 @@ export type PurityId = (typeof PURITIES)[number]["id"];
 /** Old karat labels from earlier versions of the app and of exported vault files. */
 export const LEGACY_PURITY: Record<string, PurityId> = { "24K": "999.9", "22K": "916", "21K": "875", "18K": "750", "14K": "585", "10K": "417", "9K": "375" };
 
-/** A known stamp or a legacy karat label, otherwise null. Use this wherever a value comes from outside (a file, a form). */
-export function parsePurity(p: string): PurityId | null {
-  if (PURITIES.some((x) => x.id === p)) return p as PurityId;
-  return LEGACY_PURITY[p] ?? null;
+/**
+ * A known stamp ("916", also typed as a number, with spaces) or a karat label ("22K", any case), otherwise null. Use this wherever
+ * a value comes from outside (a file, a form, the scanner): an unknown value is rejected, never turned into 916.
+ */
+export function parsePurity(v: unknown): PurityId | null {
+  const raw = typeof v === "number" ? String(v) : typeof v === "string" ? v.trim() : "";
+  if (PURITIES.some((x) => x.id === raw)) return raw as PurityId;
+  return LEGACY_PURITY[raw.toUpperCase()] ?? null;
 }
 /**
  * Forgiving form for values already inside the app: an unknown code silently becomes 916. Do NOT use it to read outside
@@ -72,7 +76,22 @@ export type Trade = {
   countryId: string; // the country the country views (More page) price this piece in
 };
 
-export type VaultItem = { id: string; name: string; weight: number; purity: PurityId; paidUsd: number; date: string; updatedAt?: string };
+/**
+ * One piece in My gold. `paid` and `currency` are what the person actually paid, in the currency they paid it in: they never change
+ * when an exchange rate does. `paidUsd` is kept beside them (the figure at entry) for older app versions and as a last-resort
+ * fallback; pieces saved before this change have only `paidUsd` until `migrateVaultPaid` fills the other two in.
+ */
+export type VaultItem = {
+  id: string;
+  name: string;
+  weight: number;
+  purity: PurityId;
+  paidUsd: number;
+  paid?: number;
+  currency?: string;
+  date: string;
+  updatedAt?: string;
+};
 
 export type Settings = {
   spotUsdOz: number;
@@ -177,6 +196,15 @@ export function baseRateOf(settings: Settings, countries: Country[]): number {
   const c = countries.find((x) => x.currency === settings.baseCurrency);
   if (c) return c.rate;
   return settings.baseRate > 0 ? settings.baseRate : 1;
+}
+
+/** Local units per 1 USD for any currency the app knows a rate for, otherwise null. */
+export function currencyRate(currency: string, settings: Settings, countries: Country[]): number | null {
+  if (currency === "USD") return 1;
+  const c = countries.find((x) => x.currency === currency);
+  if (c && c.rate > 0) return c.rate;
+  if (settings.baseCurrency === currency && settings.baseRate > 0) return settings.baseRate;
+  return null;
 }
 
 /** Whether a rate for this currency is actually known (USD, a watchlist currency, or the manual rate when it is the display currency). */
@@ -446,6 +474,45 @@ export function landedPerGram(country: Country, spotUsdOz: number, basis: Basis 
   );
 }
 
+/**
+ * What a piece cost, in the display currency. In the currency it was paid in, the amount is exactly what was typed (`exact`);
+ * in another currency it is converted at today's rate and is not exact. A piece with no `paid` and `currency` (saved by an
+ * older version) falls back to its USD figure.
+ */
+export function paidInDisplay(
+  item: Pick<VaultItem, "paid" | "currency" | "paidUsd">,
+  display: string,
+  displayFx: number,
+  rateOf: (currency: string) => number | null,
+): { amount: number; exact: boolean } {
+  if (typeof item.paid === "number" && typeof item.currency === "string") {
+    if (item.currency === display) return { amount: item.paid, exact: true };
+    const from = rateOf(item.currency);
+    if (from && from > 0) return { amount: (item.paid / from) * displayFx, exact: false };
+  }
+  return { amount: item.paidUsd * displayFx, exact: false };
+}
+
+/**
+ * One-time move for pieces saved before the price paid was kept in its own currency: the figure the person typed is recovered as
+ * paidUsd x the rate they saved for the display currency (the rate that turned their typing into USD), and then it is fixed.
+ * Pieces migrated are re-stamped so the other devices adopt the result. Returns the same array when nothing needed it.
+ */
+export function migrateVaultPaid(
+  vault: VaultItem[],
+  o: { currency: string; ratePerUsd: number; now: Date },
+): { vault: VaultItem[]; changed: number } {
+  if (!(o.ratePerUsd > 0) || !/^[A-Z]{3}$/.test(o.currency)) return { vault, changed: 0 };
+  let changed = 0;
+  const at = o.now.toISOString();
+  const next = vault.map((v) => {
+    if (typeof v.paid === "number" && typeof v.currency === "string") return v;
+    changed++;
+    return { ...v, paid: Math.round(v.paidUsd * o.ratePerUsd * 100) / 100, currency: o.currency, updatedAt: at };
+  });
+  return changed ? { vault: next, changed } : { vault, changed: 0 };
+}
+
 /** Amounts typed in one currency, restated in another (used when the display currency changes). */
 export function convertTradeMoney(trade: Trade, from: number, to: number, currency: string): Trade {
   if (!(from > 0) || !(to > 0)) return { ...trade, currency };
@@ -471,6 +538,9 @@ export function convertTradeMoney(trade: Trade, from: number, to: number, curren
 export function clearTradeMoney(trade: Trade, currency: string): Trade {
   return { ...DEFAULT_TRADE, weight: trade.weight, purity: trade.purity, countryId: trade.countryId, currency, ...(trade.side ? { side: trade.side } : {}) };
 }
+
+/** The short name people use for a currency in a label: "RM", not "MYR". Amounts are formatted by `fmt`, which already writes RM. */
+export const currencyLabel = (code: string) => (code === "MYR" ? "RM" : code);
 
 export function fmt(n: number, currency = "USD", decimals = 2) {
   if (!isFinite(n)) return "—";

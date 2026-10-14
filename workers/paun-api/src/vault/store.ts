@@ -17,6 +17,8 @@ export type StoredRow = {
   weight: number;
   purity: PurityId;
   paidUsd: number;
+  paid: number | null; // the price in the currency it was paid in; null for pieces saved by an older app version
+  currency: string | null;
   date: string;
   updatedAt: string;
   deletedAt: string | null; // set = the piece was removed (a tombstone)
@@ -58,11 +60,11 @@ export class MemoryVaultStore implements VaultStore {
     const startCounter = this.counter;
     for (const it of items) {
       const have = mine.get(it.id);
-      if (!have || newer(it.updatedAt, have.updatedAt)) mine.set(it.id, { ...it, deletedAt: null, version: ++this.counter });
+      if (!have || newer(it.updatedAt, have.updatedAt)) mine.set(it.id, { ...it, paid: it.paid ?? null, currency: it.currency ?? null, deletedAt: null, version: ++this.counter });
     }
     for (const rm of removed) {
       const have = mine.get(rm.id);
-      if (!have) mine.set(rm.id, { id: rm.id, name: "", weight: 0, purity: "999.9", paidUsd: 0, date: "1970-01-01", updatedAt: rm.deletedAt, deletedAt: rm.deletedAt, version: ++this.counter });
+      if (!have) mine.set(rm.id, { id: rm.id, name: "", weight: 0, purity: "999.9", paidUsd: 0, paid: null, currency: null, date: "1970-01-01", updatedAt: rm.deletedAt, deletedAt: rm.deletedAt, version: ++this.counter });
       else if (newer(rm.deletedAt, have.updatedAt)) mine.set(rm.id, { ...have, updatedAt: rm.deletedAt, deletedAt: rm.deletedAt, version: ++this.counter });
     }
     if ([...mine.values()].filter((r) => r.deletedAt === null).length > max) {
@@ -94,12 +96,13 @@ export class MemoryVaultStore implements VaultStore {
 // ---------- Postgres (Neon) ----------
 type Db = { query: Pool["query"] };
 const ITEM_UPSERT = `
-insert into vault_items (user_id, id, name, weight, purity, paid_usd, date, updated_at, deleted_at, version)
-select $1, t.id, t.name, t.weight, t.purity, t.paid_usd, t.date, t.updated_at, null, nextval('vault_version_seq')
-from unnest($2::text[], $3::text[], $4::float8[], $5::text[], $6::float8[], $7::text[], $8::timestamptz[])
-  as t(id, name, weight, purity, paid_usd, date, updated_at)
+insert into vault_items (user_id, id, name, weight, purity, paid_usd, paid, currency, date, updated_at, deleted_at, version)
+select $1, t.id, t.name, t.weight, t.purity, t.paid_usd, t.paid, t.currency, t.date, t.updated_at, null, nextval('vault_version_seq')
+from unnest($2::text[], $3::text[], $4::float8[], $5::text[], $6::float8[], $7::text[], $8::timestamptz[], $9::float8[], $10::text[])
+  as t(id, name, weight, purity, paid_usd, date, updated_at, paid, currency)
 on conflict (user_id, id) do update set
-  name = excluded.name, weight = excluded.weight, purity = excluded.purity, paid_usd = excluded.paid_usd, date = excluded.date,
+  name = excluded.name, weight = excluded.weight, purity = excluded.purity, paid_usd = excluded.paid_usd,
+  paid = excluded.paid, currency = excluded.currency, date = excluded.date,
   updated_at = excluded.updated_at, deleted_at = null, version = nextval('vault_version_seq')
 where vault_items.updated_at < excluded.updated_at`;
 const TOMBSTONE_UPSERT = `
@@ -154,6 +157,8 @@ export class PgVaultStore implements VaultStore {
           items.map((i) => i.paidUsd),
           items.map((i) => i.date),
           items.map((i) => i.updatedAt),
+          items.map((i) => i.paid ?? null),
+          items.map((i) => i.currency ?? null),
         ]);
       }
       if (removed.length) await client.query(TOMBSTONE_UPSERT, [userId, removed.map((r) => r.id), removed.map((r) => r.deletedAt)]);
@@ -173,9 +178,9 @@ export class PgVaultStore implements VaultStore {
 
   async changedSince(userId: string, since: number): Promise<StoredRow[]> {
     const r = await (this.pool as unknown as Db).query<{
-      id: string; name: string; weight: number; purity: PurityId; paidUsd: number; date: string; updated_at: Date; deleted_at: Date | null; version: number;
+      id: string; name: string; weight: number; purity: PurityId; paidUsd: number; paid: number | null; currency: string | null; date: string; updated_at: Date; deleted_at: Date | null; version: number;
     }>(
-      `select id, name, weight, purity, paid_usd as "paidUsd", date, updated_at, deleted_at, version::float8 as version
+      `select id, name, weight, purity, paid_usd as "paidUsd", paid, currency, date, updated_at, deleted_at, version::float8 as version
        from vault_items where user_id = $1 and version > $2 order by version`,
       [userId, since],
     );
@@ -185,6 +190,8 @@ export class PgVaultStore implements VaultStore {
       weight: x.weight,
       purity: x.purity,
       paidUsd: x.paidUsd,
+      paid: x.paid,
+      currency: x.currency,
       date: x.date,
       updatedAt: new Date(x.updated_at).toISOString(),
       deletedAt: x.deleted_at ? new Date(x.deleted_at).toISOString() : null,

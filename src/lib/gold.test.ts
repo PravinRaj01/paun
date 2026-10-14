@@ -23,6 +23,9 @@ import {
   karatOf,
   landedPerGram,
   metalPerGram,
+  currencyRate,
+  migrateVaultPaid,
+  paidInDisplay,
   normPurity,
   parsePurity,
   pieceValue,
@@ -338,6 +341,60 @@ describe("exchange rate from the snapshot (L1)", () => {
   });
 });
 
+describe("the price paid stays what was paid (L8)", () => {
+  const rates: Record<string, number> = { USD: 1, MYR: 4.0845, SGD: 1.2784 };
+  const rateOf = (c: string) => rates[c] ?? null;
+
+  it("in the currency it was paid in, the amount is exactly what was typed, whatever the exchange rate does", () => {
+    const item = { paid: 5000, currency: "MYR", paidUsd: 1123.6 };
+    expect(paidInDisplay(item, "MYR", 4.0845, rateOf)).toEqual({ amount: 5000, exact: true });
+    expect(paidInDisplay(item, "MYR", 3.9, rateOf)).toEqual({ amount: 5000, exact: true }); // the rate moved: still RM 5,000
+  });
+
+  it("in another currency it is converted at today's rate and marked as not exact", () => {
+    const r = paidInDisplay({ paid: 5000, currency: "MYR", paidUsd: 1123.6 }, "SGD", 1.2784, rateOf);
+    expect(r.exact).toBe(false);
+    expect(r.amount).toBeCloseTo((5000 / 4.0845) * 1.2784, 6);
+  });
+
+  it("a piece saved before this change falls back to its USD figure, and so does one whose currency has no known rate", () => {
+    expect(paidInDisplay({ paidUsd: 1000 }, "MYR", 4, rateOf)).toEqual({ amount: 4000, exact: false });
+    expect(paidInDisplay({ paid: 900, currency: "XYZ", paidUsd: 1000 }, "MYR", 4, rateOf)).toEqual({ amount: 4000, exact: false });
+  });
+
+  it("migration: RM 5,000 typed at the saved rate 4.45 comes back as RM 5,000, not as RM 4,584 at the market rate", () => {
+    const old = { id: "a", name: "x", weight: 10, purity: "916" as const, paidUsd: 5000 / 4.45, date: "2026-10-01" };
+    const m = migrateVaultPaid([old], { currency: "MYR", ratePerUsd: 4.45, now: new Date("2026-10-14T00:00:00Z") });
+    expect(m.changed).toBe(1);
+    expect(m.vault[0]).toMatchObject({ paid: 5000, currency: "MYR", updatedAt: "2026-10-14T00:00:00.000Z" });
+    expect(paidInDisplay(m.vault[0]!, "MYR", 4.0845, rateOf).amount).toBe(5000);
+  });
+
+  it("migration leaves pieces that already have their price alone, returns the same array when nothing changes, and is safe without a rate", () => {
+    const done = { id: "a", name: "x", weight: 10, purity: "916" as const, paidUsd: 100, paid: 450, currency: "MYR", date: "2026-10-01", updatedAt: "2026-10-02T00:00:00.000Z" };
+    const vault = [done];
+    const m = migrateVaultPaid(vault, { currency: "MYR", ratePerUsd: 4.45, now: new Date() });
+    expect(m.vault).toBe(vault);
+    expect(m.changed).toBe(0);
+    const legacy = [{ ...done, paid: undefined, currency: undefined }];
+    expect(migrateVaultPaid(legacy as never, { currency: "MYR", ratePerUsd: 0, now: new Date() }).changed).toBe(0);
+    expect(migrateVaultPaid(legacy as never, { currency: "ringgit", ratePerUsd: 4, now: new Date() }).changed).toBe(0);
+  });
+
+  it("migrating in USD keeps the USD figure as what was paid", () => {
+    const m = migrateVaultPaid([{ id: "a", name: "x", weight: 1, purity: "916", paidUsd: 1234.56, date: "2026-10-01" }], { currency: "USD", ratePerUsd: 1, now: new Date() });
+    expect(m.vault[0]).toMatchObject({ paid: 1234.56, currency: "USD" });
+  });
+
+  it("currencyRate: USD is 1, a watchlist currency its rate, the display currency its manual rate, anything else unknown", () => {
+    const s = { ...DEFAULT_SETTINGS, baseCurrency: "EUR", baseRate: 0.92 };
+    expect(currencyRate("USD", s, [])).toBe(1);
+    expect(currencyRate("MYR", s, DEFAULT_COUNTRIES)).toBe(DEFAULT_COUNTRIES[0]!.rate);
+    expect(currencyRate("EUR", s, [])).toBe(0.92);
+    expect(currencyRate("GBP", s, [])).toBeNull();
+  });
+});
+
 describe("typed amounts when the display currency changes", () => {
   it("restates every money field at the new rate and leaves weights alone", () => {
     const t = { ...DEFAULT_TRADE, weight: 12.5, buy: { ...DEFAULT_TRADE.buy, shopRate: 532.22, upah: 150, quotedTotal: 5472.2 } };
@@ -385,6 +442,10 @@ describe("currency, purity and settings helpers", () => {
     expect(parsePurity("375")).toBe("375");
     expect(parsePurity("not-a-purity")).toBeNull();
     expect(parsePurity("")).toBeNull();
+    expect(parsePurity(916)).toBe("916"); // typed as a number, as spreadsheets and some exports write it
+    expect(parsePurity(" 750 ")).toBe("750");
+    expect(parsePurity("22k")).toBe("916");
+    expect(parsePurity(undefined)).toBeNull();
   });
 
   it("normPurity maps legacy karat codes and keeps known stamps", () => {

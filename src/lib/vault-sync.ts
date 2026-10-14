@@ -15,7 +15,18 @@ export const MAX_ITEMS = 2000;
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 export type Removal = { id: string; deletedAt: string };
-export type SyncItem = { id: string; name: string; weight: number; purity: string; paidUsd: number; date: string; updatedAt: string };
+export type SyncItem = {
+  id: string;
+  name: string;
+  weight: number;
+  purity: string;
+  paidUsd: number;
+  /** What was paid and the currency it was paid in; absent from pieces saved by an older app version. */
+  paid?: number;
+  currency?: string;
+  date: string;
+  updatedAt: string;
+};
 export type SyncResponse = {
   ok: true;
   version: number;
@@ -100,7 +111,12 @@ export function toSyncItem(it: VaultItem, fallbackUpdatedAt: string): SyncItem |
   if (!(typeof it.paidUsd === "number" && Number.isFinite(it.paidUsd) && it.paidUsd >= 0 && it.paidUsd <= 1_000_000_000)) return null;
   if (typeof it.date !== "string" || !isRealDate(it.date)) return null;
   const stamp = typeof it.updatedAt === "string" && Number.isFinite(Date.parse(it.updatedAt)) ? new Date(it.updatedAt).toISOString() : fallbackUpdatedAt;
-  return { id: it.id, name: it.name.slice(0, 80), weight: it.weight, purity: it.purity, paidUsd: it.paidUsd, date: it.date, updatedAt: stamp };
+  // the price in its own currency travels only when it is whole and valid (both fields); otherwise the piece is sent as before
+  const withPaid =
+    typeof it.paid === "number" && Number.isFinite(it.paid) && it.paid >= 0 && it.paid <= 1e12 && typeof it.currency === "string" && /^[A-Z]{3}$/.test(it.currency)
+      ? { paid: it.paid, currency: it.currency }
+      : {};
+  return { id: it.id, name: it.name.slice(0, 80), weight: it.weight, purity: it.purity, paidUsd: it.paidUsd, ...withPaid, date: it.date, updatedAt: stamp };
 }
 
 /** Give every piece that has no `updatedAt` one (now), so it counts as changed and gets sent. Returns the same array if nothing changed. */

@@ -11,7 +11,7 @@ const MAX_QUOTES = 4;
 
 /** Buy here / Sell here: the same piece quoted by several shops. Lowest total, highest payout, and what a round trip costs. */
 export function CompareQuotes() {
-  const { cur, money, trade, setTrade } = useCheck();
+  const { curLabel, money, trade, setTrade } = useCheck();
   const { t } = useI18n();
   const quotes = trade.quotes;
   const patch = (i: number, p: Partial<QuoteForm>) =>
@@ -24,15 +24,10 @@ export function CompareQuotes() {
 
   return (
     <section className="space-y-4">
-      <div>
-        <h2 className="font-display text-2xl">{t("compareTitle")}</h2>
-        <p className="text-sm text-muted-foreground">{t("compareHint")}</p>
-      </div>
-
       <div className="space-y-3">
         {quotes.map((q, i) => (
-          <div key={i} className="grid gap-3 rounded-lg border bg-card p-4 sm:grid-cols-4">
-            <div className="space-y-1.5 sm:col-span-4 sm:flex sm:items-end sm:gap-3 sm:space-y-0">
+          <div key={i} className="space-y-3 rounded-lg border bg-card p-4">
+            <div className="flex items-end gap-2">
               <div className="min-w-0 flex-1 space-y-1.5">
                 <Label>{t("shopName")}</Label>
                 <Input value={q.name} placeholder={t("shopN", { n: i + 1 })} onChange={(e) => patch(i, { name: e.target.value })} />
@@ -43,22 +38,27 @@ export function CompareQuotes() {
                 </Button>
               )}
             </div>
-            <NumField label={t("shopRate", { cur })} value={q.sellRate} onChange={(n) => patch(i, { sellRate: n ?? 0 })} />
-            <NumField label={`${t("upahLabel", { cur })}`} value={q.upah} onChange={(n) => patch(i, { upah: n ?? 0 })} />
-            <NumField label={`${t("buyBackRate", { cur })} (${t("optional")})`} value={q.buyBackRate} onChange={(n) => patch(i, { buyBackRate: n ?? 0 })} />
-            <div className="flex items-end">
-              <div className="flex rounded-md border p-0.5 text-xs">
-                {(["flat", "perGram"] as const).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => patch(i, { upahMode: m })}
-                    className={`rounded px-2 py-1 ${q.upahMode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-                  >
-                    {m === "perGram" ? t("perGram") : t("perPiece")}
-                  </button>
-                ))}
+            <div className="grid grid-cols-2 gap-3">
+              <NumField label={t("quoteRate", { cur: curLabel })} value={q.sellRate} onChange={(n) => patch(i, { sellRate: n ?? 0 })} />
+              <NumField label={t("quoteBuyBack", { cur: curLabel })} value={q.buyBackRate} onChange={(n) => patch(i, { buyBackRate: n ?? 0 })} />
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-medium leading-none">{t("upahLabel", { cur: curLabel })}</span>
+                <div className="flex rounded-md border p-0.5 text-xs">
+                  {(["flat", "perGram"] as const).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => patch(i, { upahMode: m })}
+                      className={`rounded px-2 py-0.5 ${q.upahMode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                    >
+                      {m === "perGram" ? t("perGram") : t("perPiece")}
+                    </button>
+                  ))}
+                </div>
               </div>
+              <NumField label="" value={q.upah} onChange={(n) => patch(i, { upah: n ?? 0 })} />
             </div>
           </div>
         ))}

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { baseRateOf, clearTradeMoney, convertTradeMoney, fmt, rateKnown } from "@/lib/gold";
+import { baseRateOf, clearTradeMoney, convertTradeMoney, currencyLabel, fmt, rateKnown } from "@/lib/gold";
 import { useGold } from "@/lib/gold-store";
 
 /**
@@ -8,7 +8,7 @@ import { useGold } from "@/lib/gold-store";
  * becomes "USD 532.22".
  */
 export function useCheck() {
-  const { settings, countries, trade, setTrade } = useGold();
+  const { settings, countries, trade, setTrade, hydrated } = useGold();
   const cur = settings.baseCurrency;
   const fx = baseRateOf(settings, countries);
   const oldCurrency = trade.currency;
@@ -28,6 +28,8 @@ export function useCheck() {
     usdPerOz: settings.spotUsdOz,
     fx,
     cur,
+    curLabel: currencyLabel(cur),
+    hydrated,
     decimals: settings.decimals,
     money: (n: number) => fmt(n, cur, settings.decimals),
     trade,

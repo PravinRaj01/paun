@@ -1,4 +1,4 @@
-import { LEGACY_PURITY, PURITIES, type PurityId, type VaultItem } from "./gold";
+import { parsePurity as parseKnownPurity, type PurityId, type VaultItem } from "./gold";
 
 /**
  * Strict validation for a Vault JSON file (the format the Export button writes).
@@ -34,9 +34,7 @@ export function isIsoDate(v: unknown): v is string {
 
 /** A known fineness stamp ("916") or an old karat label ("22K", any case); anything else is undefined. */
 export function parsePurity(v: unknown): PurityId | undefined {
-  const raw = typeof v === "number" ? String(v) : typeof v === "string" ? v.trim() : "";
-  if (PURITIES.some((p) => p.id === raw)) return raw as PurityId;
-  return LEGACY_PURITY[raw.toUpperCase()];
+  return parseKnownPurity(v) ?? undefined;
 }
 
 const isFiniteNumber = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
@@ -99,7 +97,14 @@ export function parseVaultImport(
       typeof o["name"] === "string" && o["name"].trim() !== ""
         ? o["name"].trim().slice(0, 80)
         : `${o["weight"]} g ${purity}`;
-    items.push({ id, name, weight: o["weight"], purity, paidUsd: o["paidUsd"], date: o["date"] });
+    // the price in the currency it was paid in is kept when the file has it (files from before this version do not)
+    const paid = o["paid"];
+    const currency = o["currency"];
+    const withPaid =
+      isFiniteNumber(paid) && paid >= 0 && paid <= 1e12 && typeof currency === "string" && /^[A-Z]{3}$/.test(currency)
+        ? { paid, currency }
+        : {};
+    items.push({ id, name, weight: o["weight"], purity, paidUsd: o["paidUsd"], ...withPaid, date: o["date"] });
   }
 
   const skippedTotal = Object.values(skipped).reduce((a, b) => a + (b ?? 0), 0);

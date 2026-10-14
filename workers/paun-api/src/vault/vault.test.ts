@@ -38,6 +38,11 @@ describe("validateSyncBody: nothing reaches the database unchecked", () => {
     ["a huge weight", ok({ items: [piece("w2", { weight: 20_000 })] }), "items"],
     ["a purity the app does not know", ok({ items: [piece("p1", { purity: "925" as never })] }), "items"],
     ["a negative price", ok({ items: [piece("m1", { paidUsd: -1 })] }), "items"],
+    ["a paid amount without its currency", ok({ items: [piece("c1", { paid: 450 })] }), "items"],
+    ["a currency without its paid amount", ok({ items: [piece("c2", { currency: "MYR" })] }), "items"],
+    ["a currency that is not three capitals", ok({ items: [piece("c3", { paid: 450, currency: "ringgit" })] }), "items"],
+    ["a negative paid amount", ok({ items: [piece("c4", { paid: -1, currency: "MYR" })] }), "items"],
+    ["a paid amount that is not a number", ok({ items: [piece("c5", { paid: "450" as never, currency: "MYR" })] }), "items"],
     ["a date that does not exist", ok({ items: [piece("d1", { date: "2026-02-31" })] }), "items"],
     ["an updatedAt with no timezone", ok({ items: [piece("t1", { updatedAt: "2026-10-01T00:00:00" })] }), "items"],
     ["an updatedAt far in the future", ok({ items: [piece("t2", { updatedAt: "2030-01-01T00:00:00.000Z" })] }), "items"],
@@ -148,6 +153,17 @@ describe("POST /sync: two devices of one account", () => {
     const a2 = await t.call({ since: versionA }, t.bearerToken);
     expect(a2.json.removed.map((r) => r.id)).toEqual(["a-2"]);
     expect(a2.json.items.map((i) => i.id)).toEqual(["b-1"]);
+  });
+
+  it("the price in its own currency crosses between devices, and a piece without it stays without it", async () => {
+    const t = await setup();
+    await t.call({ since: 0, items: [piece("new", { paid: 5472.2, currency: "MYR" }), piece("old")] }, t.bearerToken);
+    const other = await t.call({ since: 0 }, t.bearerToken);
+    const n = other.json.items.find((i) => i.id === "new")!;
+    const o = other.json.items.find((i) => i.id === "old")!;
+    expect(n).toMatchObject({ paidUsd: 500, paid: 5472.2, currency: "MYR" });
+    expect(o).not.toHaveProperty("paid");
+    expect(o).not.toHaveProperty("currency");
   });
 
   it("an offline device cannot bring a removed piece back", async () => {

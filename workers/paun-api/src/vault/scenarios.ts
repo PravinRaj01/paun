@@ -67,6 +67,29 @@ export const scenarios: Scenario[] = [
     },
   },
   {
+    name: "the price in its own currency is kept with the piece, and a piece saved without it comes back without it",
+    run: async (s, a) => {
+      await s.apply(a, [piece("with", { paid: 5472.2, currency: "MYR" }), piece("without")], [], MAX);
+      const rows = await s.changedSince(a, 0);
+      const w = rows.find((r) => r.id === "with")!;
+      const wo = rows.find((r) => r.id === "without")!;
+      assert.deepEqual({ paid: w.paid, currency: w.currency, paidUsd: w.paidUsd }, { paid: 5472.2, currency: "MYR", paidUsd: 500 });
+      assert.deepEqual({ paid: wo.paid, currency: wo.currency }, { paid: null, currency: null });
+    },
+  },
+  {
+    name: "a newer copy of a piece replaces it whole: the paid price and currency follow the winning copy",
+    run: async (s, a) => {
+      await s.apply(a, [piece("p1", { updatedAt: at(2) })], [], MAX); // an older app wrote it without the price in its currency
+      await s.apply(a, [piece("p1", { paid: 1800, currency: "SGD", updatedAt: at(5) })], [], MAX); // a device that migrated it
+      let row = (await s.changedSince(a, 0))[0]!;
+      assert.deepEqual({ paid: row.paid, currency: row.currency }, { paid: 1800, currency: "SGD" });
+      await s.apply(a, [piece("p1", { updatedAt: at(3) })], [], MAX); // a stale legacy copy arrives late: ignored
+      row = (await s.changedSince(a, 0))[0]!;
+      assert.deepEqual({ paid: row.paid, currency: row.currency }, { paid: 1800, currency: "SGD" });
+    },
+  },
+  {
     name: "an older change is ignored, a newer one wins and gets a new version",
     run: async (s, a) => {
       await s.apply(a, [piece("p1", { name: "v2", updatedAt: at(5) })], [], MAX);
