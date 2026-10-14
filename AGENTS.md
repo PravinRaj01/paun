@@ -11,14 +11,14 @@
 - Copy: one plain sentence plus the number; labels of one to three everyday words; one disclaimer per page; core-screen strings at most 20 words. Details in PLAN.md section 6.
 - Git: follow the SOP (issue, branch, small commits, push the feature branch, PR that closes the issue); the owner merges. No AI attribution in commits, issues or PRs.
 - Accounts and sync are merged and frozen behind `?accounts=1`; no new account work until the core is right (phases in PLAN.md).
-- Gold maths is being moved into one engine (phase 2, issue #27). Do not add new gold arithmetic inside components.
+- Gold maths lives in one engine, `src/lib/gold.ts` (`buyCheck`, `sellCheck`, `compareQuotes`, `pieceValue`, `countryEstimate`), specified in `docs/calculations.md`; every worked example there is a test. Do not add gold arithmetic inside components, and change the spec before the engine.
 
 ## Rules
 
 - All app state is client-side (React context + LocalStorage in src/lib/gold-store.tsx); no login or database is ever required. The optional sign-in with Vault, preference and watchlist sync exists behind `?accounts=1`; everything must keep working without it.
 - PWA is manifest-only (public/manifest.webmanifest); no service worker, to avoid stale-cache risk with SSR.
 - Watchlist additions pick from the built-in catalog (src/lib/country-catalog.ts, indicative editable defaults) with a Custom-entry fallback.
-- All internal math is USD; only display converts via the base currency (settings.baseCurrency, rate from the watchlist or settings.baseRate). Trade fee/melting/asking inputs are entered in the base currency and stored as USD.
+- Gold maths takes a USD price per ounce and an exchange rate as arguments (src/lib/gold.ts); the display currency is settings.baseCurrency (rate from the watchlist, which follows the daily snapshot unless the person set their own, or settings.baseRate). Amounts a person types (a shop's rate, upah, the price they paid) keep the currency they were typed in: the Trade form stores `currency` beside its amounts and the Vault stores `paid` and `currency`; the USD figure `paidUsd` is kept only as a fallback. Never rewrite what someone paid because an exchange rate changed.
 - The landing map preserves vertical page scrolling at its home view, supports sideways one-finger exploration, and captures full pan plus pinch gestures only after zooming.
 - Theme changes use the browser View Transition API with a CSS radial reveal from the header control and a reduced-motion fallback.
 

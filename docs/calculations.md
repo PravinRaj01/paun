@@ -2,7 +2,7 @@
 
 **Status: approved 2026-10-14** ([#26](https://github.com/PravinRaj01/paun/issues/26), PR #32). Phase 2
 ([#27](https://github.com/PravinRaj01/paun/issues/27)) implements it in `src/lib/gold.ts`, and every worked example below is a test in
-`src/lib/gold.test.ts`. Still to come in phase 2: the Vault stores the price paid in the currency paid (section 6).
+`src/lib/gold.test.ts`. The Vault stores the price paid in the currency paid (section 6) since the second part of phase 2.
 
 Sources and dates for the facts used here are in [`docs/research/gold-pricing-2026-10.md`](research/gold-pricing-2026-10.md).
 
