@@ -16,6 +16,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DcaRouteImport } from './routes/dca'
 import { Route as MarketsRouteImport } from './routes/markets'
 import { Route as MoreRouteImport } from './routes/more'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as VaultRouteImport } from './routes/vault'
 
 const IndexRoute = IndexRouteImport.update({
@@ -53,6 +54,11 @@ const MoreRoute = MoreRouteImport.update({
   path: '/more',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VaultRoute = VaultRouteImport.update({
   id: '/vault',
   path: '/vault',
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/dca': typeof DcaRoute
   '/markets': typeof MarketsRoute
   '/more': typeof MoreRoute
+  '/settings': typeof SettingsRoute
   '/vault': typeof VaultRoute
 }
 export interface FileRoutesByTo {
@@ -77,6 +84,7 @@ export interface FileRoutesByTo {
   '/dca': typeof DcaRoute
   '/markets': typeof MarketsRoute
   '/more': typeof MoreRoute
+  '/settings': typeof SettingsRoute
   '/vault': typeof VaultRoute
 }
 export interface FileRoutesById {
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   '/dca': typeof DcaRoute
   '/markets': typeof MarketsRoute
   '/more': typeof MoreRoute
+  '/settings': typeof SettingsRoute
   '/vault': typeof VaultRoute
 }
 export interface FileRouteTypes {
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
     | '/dca'
     | '/markets'
     | '/more'
+    | '/settings'
     | '/vault'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/dca'
     | '/markets'
     | '/more'
+    | '/settings'
     | '/vault'
   id:
     | '__root__'
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | '/dca'
     | '/markets'
     | '/more'
+    | '/settings'
     | '/vault'
   fileRoutesById: FileRoutesById
 }
@@ -131,6 +143,7 @@ export interface RootRouteChildren {
   DcaRoute: typeof DcaRoute
   MarketsRoute: typeof MarketsRoute
   MoreRoute: typeof MoreRoute
+  SettingsRoute: typeof SettingsRoute
   VaultRoute: typeof VaultRoute
 }
 
@@ -185,6 +198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MoreRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/vault': {
       id: '/vault'
       path: '/vault'
@@ -203,6 +223,7 @@ const rootRouteChildren: RootRouteChildren = {
   DcaRoute: DcaRoute,
   MarketsRoute: MarketsRoute,
   MoreRoute: MoreRoute,
+  SettingsRoute: SettingsRoute,
   VaultRoute: VaultRoute,
 }
 export const routeTree = rootRouteImport
