@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowDownUp, Pencil, TrendingDown, X } from "lucide-react";
+import { ArrowDownUp, Pencil, TrendingDown, TrendingUp, X } from "lucide-react";
 import { useGold } from "@/lib/gold-store";
 import { baseRateOf, countryEstimate, fmt, purityLabel, tradeUpahUsd, type Country } from "@/lib/gold";
 import { BasisBadge } from "./BasisBadge";
@@ -42,6 +42,7 @@ export function Arbitrage() {
   const min = rows.length ? Math.min(...rows.map((x) => x.r.totalUsd)) : 0;
   const max = rows.length ? Math.max(...rows.map((x) => x.r.totalUsd)) : 0;
   const best = rows.find((x) => x.r.totalUsd === min);
+  const dearest = rows.find((x) => x.r.totalUsd === max);
 
   const val = (x: (typeof rows)[number]) =>
     sort === "name" ? x.c.name : sort === "total" ? x.r.totalUsd : sort === "perG" ? x.r.perGramUsd : x.r.overMetalPct;
@@ -123,16 +124,23 @@ export function Arbitrage() {
         </p>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-2 sm:gap-3">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <div className="min-w-0 rounded-lg border border-success/40 bg-card p-2.5 sm:p-4">
               <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-success sm:gap-2 sm:text-xs">
-                 <TrendingDown className="h-3.5 w-3.5" /> <span className="truncate">{t("cheapestList")}</span>
+                 <TrendingDown className="h-3.5 w-3.5" /> <span className="truncate">{t("buyHere")}</span>
               </div>
               <div className="mt-1 truncate text-sm font-medium sm:text-lg">{best!.c.name}</div>
               <div className="num text-sm text-muted-foreground">{money(best!.r.totalUsd)}</div>
             </div>
+            <div className="min-w-0 rounded-lg border border-primary/40 bg-card p-2.5 sm:p-4">
+              <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-gold sm:gap-2 sm:text-xs">
+                 <TrendingUp className="h-3.5 w-3.5" /> <span className="truncate">{t("costliest")}</span>
+              </div>
+              <div className="mt-1 truncate text-sm font-medium sm:text-lg">{dearest!.c.name}</div>
+              <div className="num text-sm text-muted-foreground">{money(dearest!.r.totalUsd)}</div>
+            </div>
             <div className="min-w-0 rounded-lg border bg-card p-2.5 sm:p-4">
-               <div className="text-[10px] uppercase tracking-wider text-muted-foreground sm:text-xs">{t("priceGap")}</div>
+               <div className="text-[10px] uppercase tracking-wider text-muted-foreground sm:text-xs">{t("gap")}</div>
               <div className="num mt-1 text-sm sm:text-lg">{money(max - min)}</div>
               <div className="num text-sm text-muted-foreground">
                 {min > 0 ? (((max - min) / min) * 100).toFixed(2) : "0"}%
