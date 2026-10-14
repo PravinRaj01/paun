@@ -5,7 +5,7 @@ import { buyCheck, fmt, metalPerGram, SUSUT_STARTING_POINT_PCT, type BuyForm, ty
 import { useGold } from "@/lib/gold-store";
 import { localToday } from "@/lib/datetime";
 import { useI18n } from "@/lib/i18n";
-import { NumField, Row, Verdict } from "./check-ui";
+import { GuideLink, NumField, Row, Verdict } from "./check-ui";
 import { useCheck } from "./use-check";
 
 /** At the counter: does the shop's total add up, what is gold and what is workmanship, and what would you get back. */
@@ -139,6 +139,7 @@ export function BuyCheck() {
           </div>
         </>
       )}
+      <div><GuideLink topic="upah" label={t("guideLinkUpah")} /></div>
     </section>
   );
 }
