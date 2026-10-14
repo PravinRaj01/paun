@@ -185,7 +185,7 @@ function VaultPage() {
         )}
 
         <div className="grid gap-3 rounded-lg border bg-card p-4 sm:grid-cols-5 sm:items-end">
-          <div className="space-y-1.5 sm:col-span-2"><Label>{t("itemName")}</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Rantai 916" /></div>
+          <div className="space-y-1.5 sm:col-span-2"><Label>{t("itemName")}</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={t("piecePlaceholder")} /></div>
           <div className="space-y-1.5"><Label>{t("weight")}</Label><Input type="number" inputMode="decimal" className="num" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>{t("purity")}</Label>
             <Select value={form.purity} onValueChange={(v) => setForm({ ...form, purity: v as PurityId })}>

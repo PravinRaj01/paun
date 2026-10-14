@@ -15,15 +15,15 @@ import { GoldGuide } from "@/components/gold/GoldGuide";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Paun — Know the true price of gold" },
+      { title: "Paun — Check a shop's gold price" },
       {
         name: "description",
         content: "Check a shop's gold price, see what you would get when you sell, and keep track of your gold.",
       },
-      { property: "og:title", content: "Paun — Know the true price of gold" },
+      { property: "og:title", content: "Paun — Check a shop's gold price" },
       {
         property: "og:description",
-        content: "Is the shop's price fair? Check a quote to buy or an offer to sell, and see what is gold and what is workmanship.",
+        content: "Check a shop's quote to buy or an offer to sell, and see what is gold and what is upah.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

@@ -79,7 +79,7 @@ export function Arbitrage() {
   return (
     <section className="space-y-4">
       <div>
-         <h2 className="font-display text-2xl">{t("spreadTitle")}</h2>
+         <h2 className="font-display text-2xl">{t("countriesTitle")}</h2>
         <p className="text-sm text-muted-foreground">
           {t("countryRough", { weight: trade.weight, purity: purityLabel(trade.purity) })} <BasisBadge inline />
         </p>
@@ -120,7 +120,7 @@ export function Arbitrage() {
 
       {rows.length === 0 ? (
         <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-          Select at least one country above to compare.
+          {t("pickCountry")}
         </p>
       ) : (
         <>
@@ -163,9 +163,9 @@ export function Arbitrage() {
                 </Select>
               </div>
               <div className="mt-2 divide-y border-t">
-                {compareRow("Total", rA.totalUsd, rB.totalUsd, money)}
-                {compareRow("Per gram", rA.perGramUsd, rB.perGramUsd, money)}
-                {compareRow("Premium", rA.overMetalPct, rB.overMetalPct, (n) => `${n.toFixed(2)}%`)}
+                {compareRow(t("total"), rA.totalUsd, rB.totalUsd, money)}
+                {compareRow(t("colPerGram"), rA.perGramUsd, rB.perGramUsd, money)}
+                {compareRow(t("overGold"), rA.overMetalPct, rB.overMetalPct, (n) => `${n.toFixed(2)}%`)}
               </div>
             </div>
           )}
@@ -182,7 +182,7 @@ export function Arbitrage() {
                 <div className="shrink-0 text-right">
                   <div className="num text-sm">{money(r.totalUsd)}</div>
                   <div className={`num text-xs ${r.totalUsd === min ? "text-success" : "text-muted-foreground"}`}>
-                    {r.totalUsd === min ? "Cheapest" : `+${money(r.totalUsd - min)}`}
+                    {r.totalUsd === min ? t("cheapest") : `+${money(r.totalUsd - min)}`}
                   </div>
                 </div>
               </li>
@@ -192,12 +192,12 @@ export function Arbitrage() {
             <table className="w-full text-sm">
               <thead className="border-b text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
-                  <H k="name" label="Country" />
-                  <H k="total" label={`Total (${cur})`} right />
-                  <th className="px-4 py-2 text-right font-normal">Local</th>
-                  <H k="perG" label="Per gram" right />
-                  <H k="premium" label="Premium" right />
-                  <th className="px-4 py-2 text-right font-normal">vs. cheapest</th>
+                  <H k="name" label={t("country")} />
+                  <H k="total" label={`${t("total")} (${cur})`} right />
+                  <th className="px-4 py-2 text-right font-normal">{t("local")}</th>
+                  <H k="perG" label={t("colPerGram")} right />
+                  <H k="premium" label={t("overGold")} right />
+                  <th className="px-4 py-2 text-right font-normal">{t("vsCheapest")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -209,7 +209,7 @@ export function Arbitrage() {
                     <td className="num px-4 py-2.5 text-right">{money(r.perGramUsd)}</td>
                     <td className="num px-4 py-2.5 text-right">{r.overMetalPct.toFixed(2)}%</td>
                     <td className={`num px-4 py-2.5 text-right ${r.totalUsd === min ? "text-success" : "text-muted-foreground"}`}>
-                      {r.totalUsd === min ? "Cheapest" : `+${money(r.totalUsd - min)}`}
+                      {r.totalUsd === min ? t("cheapest") : `+${money(r.totalUsd - min)}`}
                     </td>
                   </tr>
                 ))}

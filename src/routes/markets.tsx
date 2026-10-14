@@ -100,7 +100,7 @@ function Markets() {
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <p className="p-6 text-center text-sm text-muted-foreground">Add countries to see the chart.</p>
+                  <p className="p-6 text-center text-sm text-muted-foreground">{t("chartNeedsCountries")}</p>
                 )}
               </div>
             </section>

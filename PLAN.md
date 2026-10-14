@@ -96,15 +96,17 @@ Phase 1 ([#26](https://github.com/PravinRaj01/paun/issues/26)) writes this up in
 
 | Core (main screens) | More page | Frozen (no new work) | Removed from the UI |
 |---|---|---|---|
-| **Today**: RM per gram, time, source | Price history chart | Accounts and sync (merged, behind `?accounts=1`) | Old Arbitrage "A vs B" selects and sortable table (its Buy here / Sell here tiles return, rebuilt, in Check price) |
+| **Top bar**: price per gram and per ounce, time, source (always visible) | Price history chart | Accounts and sync (merged, behind `?accounts=1`) | Old Arbitrage "A vs B" selects and sortable table (its Buy here / Sell here tiles return, rebuilt, in Check price) |
 | **Check price**: Buy, Sell / trade-in, Buy here / Sell here | Next-week range | Alerts, street rates | 41-country catalog and duty/VAT editor (trimmed to MY, SG, AE, IN) |
-| **My gold** (Vault, receipt scanner in Beta) | Monthly plan | ML research (bench, TFT, regime model) | Raw / shop-price toggle |
+| **My gold** (Vault, receipt scanner in Beta) | Monthly plan | ML research (bench, TFT, regime model) | (none: the raw / shop-price toggle stays in View options) |
 | **Guide** | Compare countries | | First-visit live-price pop-up |
-| | The globe; Advanced settings (GoldAPI key, Gemini key, decimals, export/import) | | |
+| | Settings page (price, dock arrangement, GoldAPI key, Gemini key, decimals, export/import); the globe lives on the landing page | | |
 
 The daily snapshot job keeps running: it is the source of the gold price and the exchange rate.
 
-New dock (five entries, labels always visible): **Today · Check price · My gold · Guide · More**.
+The dock keeps its original animated, magnifying look. Its default is six entries: **Check price · My gold · More · Guide · View
+options · Settings**. The owner can arrange it in Settings (which pages sit in the dock, in what order, and which sit under More;
+More and View options always stay). The Today screen was dropped (2026-10-14); the top bar already shows today's price.
 
 ## 6. How the numbers and words should behave
 
@@ -140,7 +142,7 @@ Each phase is one issue, one branch, one PR. Claude does the git steps of the SO
 | 0. Refocus the plan | [#25](https://github.com/PravinRaj01/paun/issues/25) | | this file, README and AGENTS.md match the new direction |
 | 1. Calculation spec | [#26](https://github.com/PravinRaj01/paun/issues/26) | **owner approves before phase 2** | `docs/calculations.md` and `docs/research/` written, every number sourced or labelled an assumption |
 | 2. One engine, bugs fixed | [#27](https://github.com/PravinRaj01/paun/issues/27) | phase 1 approved | L1-L12 fixed; each worked example is a test; one piece gives identical numbers on every page |
-| 3. Declutter | [#28](https://github.com/PravinRaj01/paun/issues/28) | phase 2 merged | five-item dock, Check price tabs, More page, copy diet |
+| 3. Declutter | [#28](https://github.com/PravinRaj01/paun/issues/28) | phase 2 merged | Check price tabs, More page, arrangeable dock and Settings page (#41), one set of words and a copy check (#44), then the country list trimmed to MY / SG / AE / IN |
 | 4. Guide rewrite | [#29](https://github.com/PravinRaj01/paun/issues/29) | phase 1 approved | topics in `en.json` / `ms.json`, scrollable, sourced |
 | 5. Mobile and PWA polish | [#30](https://github.com/PravinRaj01/paun/issues/30) | phase 3 merged | manifest, inputs, dialogs, offline state, acceptance walk-through |
 
@@ -157,7 +159,10 @@ Each phase is one issue, one branch, one PR. Claude does the git steps of the SO
 2. **Gold maths in USD, display in the chosen currency.** Amounts the shopper paid are stored in the currency they paid (phase 2).
 3. **Melting, susut and buy-back apply only when selling.** Never when buying.
 4. **PWA is manifest-only**, no service worker, to avoid stale-cache risk with SSR.
-5. **Bilingual:** copy in `src/locales/{en,ms}.json`; trade words (upah, susut, harga jual / beli) are not machine-translated.
+5. **Bilingual, one set of words:** all copy is in `src/locales/{en,ms}.json` and reaches the screen only through `t()`; components never
+   carry text or pick a language by hand. `docs/glossary.md` fixes one word per idea in both languages, and `src/locales/copy.test.ts`
+   fails on a missing or unused key, a core-screen string over 20 words, a glossary "avoid" word, or text written into a component.
+   Trade words (upah, susut, harga jual / beli) are not machine-translated.
 6. **Vendor stack:** Neon Postgres and Cloudflare Workers for any backend; Gemini and Groq for AI, called only from the Worker. Never
    Lovable AI Gateway, Lovable Cloud or Supabase. Secrets are Worker secrets, never in client code (the one exception is a Gemini key a
    user supplies for their own scans, kept only in their browser).
@@ -179,7 +184,22 @@ Each phase is one issue, one branch, one PR. Claude does the git steps of the SO
 | Optional accounts, Vault sync, preferences and watchlist sync | Done (PRs #20-#24), behind `?accounts=1`, frozen |
 | Privacy page, Google consent screen to production, email sign-in | Parked until the core is right |
 
-## 10. Parked
+## 10. Lessons: how work went wrong, and the rule that stops it
+
+Each of these cost the owner time. They are standing rules for every phase.
+
+| What went wrong | Rule from now on |
+|---|---|
+| #37 replaced the animated dock, the landing page and the top bar while "declutter" was meant to cut pages, not change the look | Words, data and logic change; the look does not, unless the owner asks. Before and after screenshots prove "unchanged". |
+| Buy here / Sell here was moved from countries to shops, and the owner's version vanished unannounced | Before removing, renaming or moving a feature the owner has named, say so and wait. A feature the owner "likes" is kept as it was. |
+| The country "Sell here" showed the dearest country, which is the worst place to sell | A label must not tell the shopper something the numbers do not support. Use the word that says what the number is (Costliest). |
+| Hard-coded English and `language === "ms" ? ... : ...` sat in components beside a working i18n library; one idea had three Malay words | One set of words (section 8, rule 5): locale files, `docs/glossary.md`, and a test that fails on a breach. |
+| A file was edited and its old hard-coded strings were left for "the copy PR" | When a file is touched, it leaves clean: its text goes to the locale files in the same change. |
+| My Malay was written from guesses | Malay terms come from the glossary; the owner approves the glossary, and the PR says which words are new. |
+| "No browser on this machine" was claimed without checking | Check the machine first (Playwright, Neon CLI, gh) before saying a thing cannot be done. |
+| Hand-offs gave results but not the owner's steps | Every hand-off ends with a "Your tests" table: where, what to do, what to expect, required or optional. |
+
+## 11. Parked
 
 Price alerts and push; street-rate crowdsourcing; ML benchmark against pretrained forecasters; TFT challenger; Ar-Rahnu calculator; zakat
 on gold (nisab 85 g; uruf by state); resale break-even analyser; Groq fallback for the scanner.

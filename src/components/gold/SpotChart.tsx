@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useGold } from "@/lib/gold-store";
-import { baseRateOf, BASIS_LABEL, fineOf, fmt, GRAMS_PER_OUNCE, premiumOf, PURITIES, type PurityId } from "@/lib/gold";
+import { baseRateOf, fineOf, fmt, GRAMS_PER_OUNCE, premiumOf, PURITIES, type PurityId } from "@/lib/gold";
 import { useSnapshot } from "@/lib/forecast/snapshot";
 import { formatCalendarDate, formatCalendarMs } from "@/lib/datetime";
 import { useI18n } from "@/lib/i18n";
@@ -62,7 +62,7 @@ export function SpotChart() {
     <section className="rounded-lg border bg-card p-4 sm:p-5">
       <div>
         <div className="truncate text-xs uppercase tracking-wider text-muted-foreground">
-          Gold · {BASIS_LABEL[basis]}{basis === "retail" && country ? ` (${country.name}, +${prem}% shop mark-up)` : ""} · {purity} · per {unit === "oz" ? "troy oz" : "gram"}
+          {t("chartGold")} · {basis === "retail" ? t("shopPrice") : t("rawSpot")}{basis === "retail" && country ? ` (${t("chartMarkup", { country: country.name, pct: prem })})` : ""} · {purity} · {unit === "oz" ? t("chartPerOz") : t("chartPerGram")}
         </div>
         <div className="mt-1 flex flex-wrap items-baseline gap-x-3">
            <span className="num text-2xl text-gold sm:text-3xl">{f(last)}</span>
@@ -73,7 +73,7 @@ export function SpotChart() {
       <div className="mt-4 grid grid-cols-2 gap-2 text-xs sm:flex sm:flex-wrap">
         <div className="flex rounded-md border p-0.5">
           {(["raw", "retail"] as const).map((b) => (
-            <button key={b} onClick={() => setSettings((s) => ({ ...s, priceBasis: b }))} className={`flex-1 ${seg(basis === b)}`}>{BASIS_LABEL[b]}</button>
+            <button key={b} onClick={() => setSettings((s) => ({ ...s, priceBasis: b }))} className={`flex-1 ${seg(basis === b)}`}>{b === "retail" ? t("shopPrice") : t("rawSpot")}</button>
           ))}
         </div>
         <select value={country?.id} disabled={basis !== "retail"} onChange={(e) => setCountryId(e.target.value)} className="w-full rounded-md border bg-card px-2 py-1 text-foreground disabled:opacity-40 sm:w-40">
@@ -113,9 +113,9 @@ export function SpotChart() {
         </ResponsiveContainer>
       </div>
       <div className="num mt-3 grid grid-cols-3 gap-3 text-xs text-muted-foreground">
-        <div>Open <span className="text-foreground">{f(first)}</span></div>
-        <div>High <span className="text-foreground">{f(hi)}</span></div>
-        <div>Low <span className="text-foreground">{f(lo)}</span></div>
+        <div>{t("chartOpen")} <span className="text-foreground">{f(first)}</span></div>
+        <div>{t("chartHigh")} <span className="text-foreground">{f(hi)}</span></div>
+        <div>{t("chartLow")} <span className="text-foreground">{f(lo)}</span></div>
       </div>
       <p className="mt-2 text-[11px] text-muted-foreground">
         {`${t("historyNote")} ${formatCalendarDate(real.asOf, language)}. ${t("historyTz")} ${basis === "retail" ? t("historyMarkup") : ""}`}

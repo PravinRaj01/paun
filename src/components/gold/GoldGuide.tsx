@@ -23,17 +23,16 @@ const sections = {
 } as const;
 
 export function GoldGuide({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-  const { language } = useI18n();
+  const { language, t } = useI18n();
   const mobile = useIsMobile();
-  const ms = language === "ms";
   const list = sections[language];
 
   const pages: ReactNode[] = [
     <div key="cover" className="flex h-full flex-col items-center justify-center text-center">
       <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gold-soft text-gold"><BookOpen className="h-6 w-6" /></div>
       <div className="font-brand text-3xl tracking-wide">P<span className="text-gold">au</span>n</div>
-      <div className="mt-2 font-display text-xl">{ms ? "Panduan Emas" : "Gold Guide"}</div>
-      <p className="mt-3 max-w-[16rem] text-xs leading-5 text-muted-foreground">{ms ? "Istilah penting sebelum membeli, menjual atau menukar emas." : "The essential terms behind buying, selling, and trading gold."}</p>
+      <div className="mt-2 font-display text-xl">{t("guide")}</div>
+      <p className="mt-3 max-w-[16rem] text-xs leading-5 text-muted-foreground">{t("guideCover")}</p>
     </div>,
     ...list.map(({ icon: Icon, title, body }, i) => (
       <div key={title}>
@@ -50,13 +49,13 @@ export function GoldGuide({ open, onOpenChange }: { open: boolean; onOpenChange:
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-auto max-w-none border-0 bg-transparent p-0 shadow-none sm:max-w-none [&>button]:hidden">
-        <DialogTitle className="sr-only">{ms ? "Panduan Emas" : "Gold Guide"}</DialogTitle>
-        <DialogDescription className="sr-only">{ms ? "Seret sudut halaman untuk menyelak" : "Drag a page corner to turn it"}</DialogDescription>
+        <DialogTitle className="sr-only">{t("guide")}</DialogTitle>
+        <DialogDescription className="sr-only">{t("guideDrag")}</DialogDescription>
         <Suspense fallback={<div className="h-[480px] w-[320px]" />}>
           <GuideBook key={language} pages={pages} mobile={mobile}
-            labels={{ prev: ms ? "Halaman sebelum" : "Previous page", next: ms ? "Halaman seterusnya" : "Next page" }} />
+            labels={{ prev: t("guidePrev"), next: t("guideNext") }} />
         </Suspense>
-        <p className="text-center text-[11px] text-muted-foreground">{ms ? "Seret atau klik sudut halaman untuk menyelak" : "Drag or click a page corner to turn"}</p>
+        <p className="text-center text-[11px] text-muted-foreground">{t("guideTurn")}</p>
       </DialogContent>
     </Dialog>
   );

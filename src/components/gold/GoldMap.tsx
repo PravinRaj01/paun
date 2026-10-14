@@ -5,6 +5,7 @@ import world from "world-atlas/countries-50m.json";
 import { animate, motion, useInView } from "motion/react";
 import { LocateFixed, Minus, Plus, RotateCcw } from "lucide-react";
 import { useGold } from "@/lib/gold-store";
+import { useI18n } from "@/lib/i18n";
 import { COUNTRY_CATALOG } from "@/lib/country-catalog";
 import { baseRateOf, fmt, landedPerGram, PURITIES, type Country } from "@/lib/gold";
 
@@ -102,6 +103,7 @@ function Odometer({ text }: { text: string }) {
 /** `spotUsdOz` lets the landing page price the map from the shared live feed; everywhere else the app's own price is used. */
 export function GoldMap({ spotUsdOz }: { spotUsdOz?: number } = {}) {
   const { settings, setSettings, countries } = useGold();
+  const { t } = useI18n();
   const spot = spotUsdOz ?? settings.spotUsdOz;
   const basis = settings.priceBasis ?? "retail";
   const base = baseRateOf(settings, countries);
@@ -469,16 +471,16 @@ export function GoldMap({ spotUsdOz }: { spotUsdOz?: number } = {}) {
             maskImage: "radial-gradient(ellipse 58% 54% at 50% 50%, #000 62%, transparent 100%)",
           }}
         >
-          <canvas ref={cvRef} className="block w-full" aria-label="Interactive gold price globe"
+          <canvas ref={cvRef} className="block w-full" aria-label={t("mapAria")}
             style={{ touchAction: zoomed ? "none" : "pan-y", cursor: "grab", height: 420 }}
             onPointerDown={onDown} onPointerMove={onMovePtr} onPointerUp={onUp} onPointerCancel={onUp} />
         </div>
 
         <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-2 sm:bottom-6 sm:left-auto sm:right-6 sm:translate-x-0 sm:flex-col">
-          <button className={btn} onClick={() => { tween.current?.stop(); cam.current.auto = false; setK(cam.current.k * 1.6); }} aria-label="Zoom in"><Plus className="h-4 w-4" /></button>
-          <button className={btn} onClick={() => { tween.current?.stop(); setK(cam.current.k / 1.6); }} aria-label="Zoom out"><Minus className="h-4 w-4" /></button>
-          <button className={btn} onClick={() => { const c = cam.current; flyTo(-c.lon, 12, 1); }} aria-label="Reset view"><RotateCcw className="h-3.5 w-3.5" /></button>
-          <button className={btn} onClick={locate} aria-label="Use my location"><LocateFixed className="h-4 w-4" /></button>
+          <button className={btn} onClick={() => { tween.current?.stop(); cam.current.auto = false; setK(cam.current.k * 1.6); }} aria-label={t("mapZoomIn")}><Plus className="h-4 w-4" /></button>
+          <button className={btn} onClick={() => { tween.current?.stop(); setK(cam.current.k / 1.6); }} aria-label={t("mapZoomOut")}><Minus className="h-4 w-4" /></button>
+          <button className={btn} onClick={() => { const c = cam.current; flyTo(-c.lon, 12, 1); }} aria-label={t("mapReset")}><RotateCcw className="h-3.5 w-3.5" /></button>
+          <button className={btn} onClick={locate} aria-label={t("mapLocate")}><LocateFixed className="h-4 w-4" /></button>
         </div>
 
         {hover && (
@@ -486,11 +488,11 @@ export function GoldMap({ spotUsdOz }: { spotUsdOz?: number } = {}) {
             style={{ left: clamp(hover.x, 120, (box.current?.clientWidth ?? 240) - 120), top: hover.y }}>
             <div className="flex items-baseline justify-between">
               <span className="font-medium text-popover-foreground">{hover.c.name}</span>
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{basis === "retail" ? "Shop" : "Raw"}</span>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{basis === "retail" ? t("basisShop") : t("basisRaw")}</span>
             </div>
             {[["916 · 22K", g], ["999 · 24K", g24]].map(([l, v]) => (
               <div key={l as string} className="num mt-2">
-                <div className="text-[10px] text-muted-foreground">{l} per gram</div>
+                <div className="text-[10px] text-muted-foreground">{l} {t("chartPerGram")}</div>
                 <div className="text-sm text-gold">{fmt((v as number) * hover.c.rate, hover.c.currency, 2)}</div>
                 {hover.c.currency !== cur && <div className="text-[11px] text-muted-foreground">≈ {fmt((v as number) * base, cur, 2)}</div>}
               </div>
@@ -510,7 +512,7 @@ export function GoldMap({ spotUsdOz }: { spotUsdOz?: number } = {}) {
         const v = landedPerGram(pick, spot, basis, 0.916);
         return (
           <div className="mt-8 overflow-hidden px-1 text-center sm:mt-10">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:text-xs sm:tracking-[0.25em]">{pick.name} · 916 per gram · {basis === "retail" ? "shop price" : "raw metal"}</p>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:text-xs sm:tracking-[0.25em]">{t("mapCaption", { name: pick.name, basis: (basis === "retail" ? t("shopPrice") : t("rawSpot")).toLowerCase() })}</p>
             <div className={`num mt-3 whitespace-nowrap font-display text-gold md:text-7xl ${fmt(v * pick.rate, pick.currency, 2).length > 15 ? "text-3xl" : "text-4xl sm:text-5xl"}`}><Odometer key={pick.name} text={fmt(v * pick.rate, pick.currency, 2)} /></div>
             <p className="num mt-3 text-sm text-muted-foreground">
               1 paun · {fmt(v * 8 * pick.rate, pick.currency, 0)}{pick.currency !== cur && <> · ≈ {fmt(v * base, cur, 2)}/g</>}
@@ -537,7 +539,7 @@ export function GoldMap({ spotUsdOz }: { spotUsdOz?: number } = {}) {
           <button key={c.id} onClick={() => { setSelected(c.name); focus(c.name); }} className="group border-t pt-3 text-left">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span className="truncate group-hover:text-gold">{c.name}</span>
-              {i === 0 && <span className="text-[10px] uppercase tracking-wider text-success">Cheapest</span>}
+              {i === 0 && <span className="text-[10px] uppercase tracking-wider text-success">{t("cheapest")}</span>}
             </div>
             <div className="num mt-1 text-lg text-gold"><CountUp value={v * c.rate} cur={c.currency} /></div>
             <div className="num text-[11px] text-muted-foreground">

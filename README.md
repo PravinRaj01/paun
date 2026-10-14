@@ -206,7 +206,7 @@ workers/paun-api/    backend Worker: spot feed, scanner, accounts, sync
   migrations/        SQL for the account and sync tables
   eval/              scanner accuracy runner
 ml/                  Python training, evaluation and the daily snapshot job
-docs/                deploy guide, archived plans
+docs/                deploy guide, calculation spec, glossary, research, archived plans
 .github/workflows/   CI and the daily snapshot
 PLAN.md              what Paun is for, decisions, phases
 AGENTS.md            rules for contributors and coding agents
