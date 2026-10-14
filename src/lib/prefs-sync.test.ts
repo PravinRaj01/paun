@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_COUNTRIES, DEFAULT_SETTINGS, type Country, type Settings } from "./gold";
 import { applyPrefs, canonicalJson, mergePrefs, parsePrefs, pickPrefs, sanitizeWatchlist } from "./prefs-sync";
 
-const settings: Settings = { ...DEFAULT_SETTINGS, spotUsdOz: 4321, apiKey: "goldapi-secret", source: "live", updatedAt: "2026-10-09T01:00:00Z", language: "ms", baseCurrency: "MYR", baseRate: 4.5, decimals: 3, mode: "pro", priceBasis: "raw", livePromptSeen: true };
+// saved settings of people who used an older version still carry a retired key; it must stay on the device like any other
+const settings = { ...DEFAULT_SETTINGS, spotUsdOz: 4321, apiKey: "goldapi-secret", source: "live", updatedAt: "2026-10-09T01:00:00Z", language: "ms", baseCurrency: "MYR", baseRate: 4.5, decimals: 3, mode: "pro", priceBasis: "raw", livePromptSeen: true } as Settings & { livePromptSeen: boolean };
 
 describe("pickPrefs: only the whitelisted fields can leave the device", () => {
   it("takes language, currency, rate, decimals, basis, mode and theme", () => {
@@ -26,13 +27,13 @@ describe("applyPrefs: received settings can change only the whitelisted fields",
   it("changes language, currency, rate, decimals, basis and mode, and leaves every other setting alone", () => {
     const out = applyPrefs(settings, { language: "en", baseCurrency: "SGD", baseRate: 1.3, decimals: 1, priceBasis: "retail", mode: "simple" });
     expect(out).toMatchObject({ language: "en", baseCurrency: "SGD", baseRate: 1.3, decimals: 1, priceBasis: "retail", mode: "simple" });
-    expect([out.spotUsdOz, out.apiKey, out.source, out.updatedAt, out.livePromptSeen]).toEqual([4321, "goldapi-secret", "live", "2026-10-09T01:00:00Z", true]);
+    expect([out.spotUsdOz, out.apiKey, out.source, out.updatedAt, (out as typeof settings).livePromptSeen]).toEqual([4321, "goldapi-secret", "live", "2026-10-09T01:00:00Z", true]);
   });
 
   it("ignores anything outside the whitelist even if a server (or an attacker) sends it", () => {
     const sneaky = { language: "en", spotUsdOz: 1, apiKey: "stolen", source: "manual", livePromptSeen: false } as never;
     const out = applyPrefs(settings, sneaky);
-    expect([out.spotUsdOz, out.apiKey, out.source, out.livePromptSeen]).toEqual([4321, "goldapi-secret", "live", true]);
+    expect([out.spotUsdOz, out.apiKey, out.source, (out as typeof settings).livePromptSeen]).toEqual([4321, "goldapi-secret", "live", true]);
     expect(out.language).toBe("en");
   });
 

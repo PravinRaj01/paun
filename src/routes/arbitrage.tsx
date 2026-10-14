@@ -1,28 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { AppShell } from "@/components/gold/AppShell";
-import { Arbitrage } from "@/components/gold/Arbitrage";
-import { SimpleCompare } from "@/components/gold/SimpleCompare";
-import { useGold } from "@/lib/gold-store";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+/**
+ * The old Arbitrage page. Its useful half, "where is it cheapest to buy and where does it pay most to sell", is now the Buy here /
+ * Sell here tab of the price check, and the rough country comparison moved to /countries. Old links and bookmarks land on the tab.
+ */
 export const Route = createFileRoute("/arbitrage")({
-  head: () => ({
-    meta: [
-      { title: "Spread & Arbitrage — Paun" },
-      { name: "description", content: "Run one gold trade against every watched country and compare head-to-head." },
-      { property: "og:title", content: "Spread & Arbitrage — Paun" },
-      { property: "og:description", content: "Run one gold trade against every watched country and compare head-to-head." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-    ],
-  }),
-  component: ArbitragePage,
+  beforeLoad: () => {
+    throw redirect({ to: "/dashboard", search: { tab: "compare" }, replace: true });
+  },
 });
-
-function ArbitragePage() {
-  const { settings } = useGold();
-  return (
-    <AppShell>
-      {settings.mode === "simple" ? <div className="mx-auto max-w-2xl"><SimpleCompare /></div> : <Arbitrage />}
-    </AppShell>
-  );
-}
