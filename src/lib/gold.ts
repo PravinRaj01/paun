@@ -104,7 +104,6 @@ export type Settings = {
   mode: "simple" | "pro";
   priceBasis: "raw" | "retail"; // raw spot benchmark vs typical shop counter price (country views only)
   language: "en" | "ms";
-  livePromptSeen: boolean; // the one-time "add your own GoldAPI key?" pop-up has been answered or closed
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -118,7 +117,6 @@ export const DEFAULT_SETTINGS: Settings = {
   mode: "simple",
   priceBasis: "retail",
   language: "en",
-  livePromptSeen: false,
 };
 
 /** Indicative exchange rates for the first paint; the real ones come from the daily snapshot (see `effectiveRate`). */
@@ -174,13 +172,6 @@ export const DEFAULT_TRADE: Trade = {
 /** True while the user has never set a price themselves: still the shipped default, untouched. */
 export const hasDefaultSpot = (s: Settings) =>
   s.source === "manual" && s.updatedAt === "" && s.spotUsdOz === DEFAULT_SETTINGS.spotUsdOz;
-
-/**
- * Should the one-time "want a live price?" pop-up appear? Only for people on the default price (the latest daily
- * close) who have no key of their own, and only once. Never for someone who typed a price or already added a key.
- */
-export const shouldPromptForLiveKey = (s: Settings) =>
-  !s.livePromptSeen && s.apiKey.trim() === "" && s.source !== "live" && (s.source === "market" || hasDefaultSpot(s));
 
 export const karatOf = (p: string) => PURITIES.find((x) => x.id === normPurity(p))!.karat;
 export const fineOf = (p: string) => PURITIES.find((x) => x.id === normPurity(p))!.fineness / 1000;
