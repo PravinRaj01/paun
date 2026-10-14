@@ -115,6 +115,13 @@ Until all of these exist the account routes answer `503 accounts_not_configured`
 
 **Preferences and watchlist (phase 4b.5):** the same call also carries the preferences (language, display currency and its manual rate, decimals, price basis, simple/pro mode, theme) and the country watchlist, whole, newest change wins; table `user_prefs` (migration `003_prefs.sql`, already applied to the Neon project). A new device adopts what the account holds. The spot price, its source, API keys and the calculator's inputs never leave the device.
 
+**The price paid in its own currency (refocus phase 2):** a synced piece also carries `paid` and `currency` (what the person paid, in the currency they paid it in), so correcting an exchange rate never changes what they appear to have paid. Two nullable columns, migration `004_vault_paid.sql`. **Order matters: apply the migration BEFORE the Worker that uses it is deployed** (merging to `main` deploys it), otherwise `/sync` answers 500 until the columns exist (the app itself keeps working from its own storage):
+
+```sh
+DATABASE_URL="$(bunx neonctl connection-string --project-id frosty-bird-18651199 --database-name neondb --role-name neondb_owner)" bun workers/paun-api/migrations/run.ts
+bun run check:store     # runs the store rules against the real database with two throwaway accounts, then deletes them
+```
+
 **Try it:** open the app with `?accounts=1` once (for example `https://paun-web.paun-gold.workers.dev/vault?accounts=1`), open **Settings**, and use the **Account (optional, preview)** block: Sign in with Google, then Sign out, then **Delete my account** (this really deletes it). `?accounts=0` hides the block again. The block stays hidden for everyone else until Vault sync ships (phase 4b.4).
 Running the Worker locally against the real database needs the secrets and `BETTER_AUTH_URL=http://127.0.0.1:8788`: pass them as `--var NAME:value` to `wrangler dev`, or put them in the git-ignored `.dev.vars`.
 
