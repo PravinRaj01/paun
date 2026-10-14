@@ -50,14 +50,12 @@ The app grew past these into trader features; [`PLAN.md`](PLAN.md) records the r
 
 | Feature | What it does |
 |---|---|
-| **Landing** (`/`) | Interactive globe of gold prices by country; the shared near-live gold price with its time and source |
-| **Calculator** (`/dashboard`) | Buy vs sell / trade-in: weight, purity, making fee, melting deduction, duty and tax; a verdict on the asking price |
-| **Markets** (`/markets`) | Real daily price history and a plain-language **price-range forecast** for the coming week; cost per gram by country |
-| **Arbitrage** (`/arbitrage`) | The same purchase compared across countries |
-| **Monthly plan** (`/dca`) | A backtest of buying gold every month against a savings account, on real price history |
-| **Vault** (`/vault`) | Your pieces with value, profit and loss; JSON export and import; **receipt scanner** (Beta) |
-| **Gold Guide** | Bilingual explainer: how a jewellery price is built, *upah*, melting deductions, purity, the *paun* unit |
-| **Simple / Pro** | Simple shows the answer; Pro shows the workings and the editable defaults |
+| **Today** (`/`) | Gold in RM per gram for 999, 916 and 750, with when and where the price is from, and two buttons: check a shop's price, or a sell / trade-in offer |
+| **Check price** (`/dashboard`) | Three tabs. **Buy:** the shop's rate and upah, does the total add up, gold vs workmanship, what a sell-back would give. **Sell / trade-in:** the shop's buy-back rate or its susut, against its offer. **Buy here / Sell here:** up to four shops, lowest total and highest payout |
+| **My gold** (`/vault`) | Your pieces with value now, profit and loss, the price you paid kept in the currency you paid it; JSON export and import; **receipt scanner** (Beta) |
+| **Guide** | Bilingual explainer: how a jewellery price is built, *upah*, melting deductions, purity, the *paun* unit |
+| **More** (`/more`) | Price history and a next-week range (`/markets`), a monthly plan (`/dca`), compare countries (`/countries`), a world price map (`/world`), language, Simple / Pro and settings |
+| **Simple / Pro** | Simple shows the answer; Pro shows more detail and the country list you can edit |
 | **Optional sign-in** | Google sign-in keeps the Vault, preferences and watchlist in step across devices; hidden behind `?accounts=1` while it is tested |
 | **Installable** | Web app manifest, so it can be added to a phone's home screen; online only |
 
