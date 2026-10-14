@@ -29,6 +29,8 @@
     // `wrangler secret put`; until both exist the endpoint answers 503 scanner_not_configured, so deploying first is safe.
     // The model is checked against Google's current model list; change it here without touching code.
     "GEMINI_MODEL": "gemini-3.5-flash-lite",
+    // Google's lite models take turns being overloaded; if the model above is busy or slow, this one is tried once. "none" turns it off.
+    "GEMINI_FALLBACK_MODEL": "gemini-3.1-flash-lite",
     // At most this many scans a day for everyone (each costs a fraction of a cent), and this many per visitor per hour.
     "SCAN_DAILY_CAP": "200",
     "SCAN_PER_VISITOR_HOUR": "10",

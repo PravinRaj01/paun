@@ -20,6 +20,8 @@ export type Env = {
   TURNSTILE_SECRET?: string;
   /** Plain variables: the Gemini model, the global daily scan cap, and scans per visitor per hour. */
   GEMINI_MODEL?: string;
+  /** Tried once when the model above is overloaded or too slow. A model name, or "none" to turn the second try off. */
+  GEMINI_FALLBACK_MODEL?: string;
   SCAN_DAILY_CAP?: string;
   SCAN_PER_VISITOR_HOUR?: string;
   /** Optional accounts (PLAN.md 4b). Secrets: DATABASE_URL (Neon), BETTER_AUTH_SECRET, GOOGLE_CLIENT_SECRET. Plain variables: the Google client id (public) and this API's own public URL. */

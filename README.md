@@ -173,7 +173,7 @@ Backend Worker (`workers/paun-api/wrangler.jsonc` for variables; `wrangler secre
 | `GOLDAPI_KEY` | Secret | Backup price source, used only when Yahoo fails |
 | `MONTHLY_BUDGET`, `DAILY_BUDGET` | Variable | Hard caps on GoldAPI calls (90 a month, 3 a day) |
 | `GEMINI_API_KEY`, `TURNSTILE_SECRET` | Secret | Receipt scanner; without both, `/scan` answers `503 scanner_not_configured` |
-| `GEMINI_MODEL`, `SCAN_DAILY_CAP`, `SCAN_PER_VISITOR_HOUR` | Variable | Scanner model and limits |
+| `GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL`, `SCAN_DAILY_CAP`, `SCAN_PER_VISITOR_HOUR` | Variable | Scanner model, the model tried once if the first is overloaded or slow, and limits |
 | `DATABASE_URL`, `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_SECRET` | Secret | Optional accounts |
 | `GOOGLE_CLIENT_ID`, `BETTER_AUTH_URL` | Variable | Optional accounts (public values) |
 | `EXTRA_ORIGINS` | Variable | Extra browser origins allowed to call the API, such as a custom domain |
