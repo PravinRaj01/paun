@@ -539,6 +539,9 @@ export function clearTradeMoney(trade: Trade, currency: string): Trade {
   return { ...DEFAULT_TRADE, weight: trade.weight, purity: trade.purity, countryId: trade.countryId, currency, ...(trade.side ? { side: trade.side } : {}) };
 }
 
+/** The short name people use for a currency in a label: "RM", not "MYR". Amounts are formatted by `fmt`, which already writes RM. */
+export const currencyLabel = (code: string) => (code === "MYR" ? "RM" : code);
+
 export function fmt(n: number, currency = "USD", decimals = 2) {
   if (!isFinite(n)) return "—";
   try {

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useGold } from "@/lib/gold-store";
-import { baseRateOf, currencyRate, fmt, normPurity, paidInDisplay, pieceValue, PURITIES, type PurityId, type VaultItem } from "@/lib/gold";
+import { baseRateOf, currencyLabel, currencyRate, fmt, normPurity, paidInDisplay, pieceValue, PURITIES, type PurityId, type VaultItem } from "@/lib/gold";
 import { formatCalendarDate, localToday } from "@/lib/datetime";
 import { useI18n, type CopyKey } from "@/lib/i18n";
 import type { ScanResponse } from "@/lib/scan";
@@ -164,7 +164,7 @@ function VaultPage() {
             <div key={it.id} className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-4">
               <div className="min-w-0 flex-1">
                 <div className="truncate font-medium">{it.name}</div>
-                <div className="num text-xs text-muted-foreground">{it.weight} g · {it.purity} · {formatCalendarDate(it.date, language)} ·{t("paidPrice")} {converted ? "≈ " : ""}{money(paid)}</div>
+                <div className="num text-xs text-muted-foreground">{it.weight} g · {it.purity} · {formatCalendarDate(it.date, language)} · {t("paidPrice")} {converted ? "≈ " : ""}{money(paid)}</div>
               </div>
               <div className="text-right">
                 <div className="num text-sm">{money(value)} <span className="text-xs text-muted-foreground">/ {money(sell)}</span></div>
@@ -193,7 +193,7 @@ function VaultPage() {
               <SelectContent>{PURITIES.map((p) => <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5"><Label>{t("paidPrice")} ({cur})</Label><Input type="number" inputMode="decimal" className="num" value={form.paid} onChange={(e) => setForm({ ...form, paid: e.target.value })} /></div>
+          <div className="space-y-1.5"><Label>{t("paidPrice")} ({currencyLabel(cur)})</Label><Input type="number" inputMode="decimal" className="num" value={form.paid} onChange={(e) => setForm({ ...form, paid: e.target.value })} /></div>
           <div className="space-y-1.5 sm:col-span-2"><Label>{t("boughtOn")}</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
           <Button className="sm:col-start-5" onClick={add}>{t("addItem")}</Button>
         </div>
