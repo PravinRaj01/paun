@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { compareQuotes, DEFAULT_TRADE, type QuoteForm } from "@/lib/gold";
 import { useI18n } from "@/lib/i18n";
-import { NumField, Verdict } from "./check-ui";
+import { GuideLink, NumField, Verdict } from "./check-ui";
 import { useCheck } from "./use-check";
 
 const MAX_QUOTES = 4;
@@ -109,6 +109,7 @@ export function CompareQuotes() {
           <p className="text-xs text-muted-foreground">{t("compareFoot")}</p>
         </>
       )}
+      <div><GuideLink topic="buy" label={t("guideLinkBuy")} /></div>
     </section>
   );
 }

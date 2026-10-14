@@ -4,7 +4,7 @@ import { AnimatePresence, motion, useMotionValue, useSpring, useTransform, type 
 import type { LucideIcon } from "lucide-react";
 import { ModeToggle } from "./ModeToggle";
 import { BasisBadge } from "./BasisBadge";
-import { GoldGuide } from "./GoldGuide";
+import { useGuide } from "./guide/guide-context";
 import { useGold } from "@/lib/gold-store";
 import { useI18n } from "@/lib/i18n";
 import { activeDock, PAGE_PATH, type DockId } from "@/lib/dock";
@@ -63,7 +63,7 @@ function Dock({ vertical, className }: { vertical: boolean; className: string })
   const path = useRouterState({ select: (s) => s.location.pathname });
   const pointer = useMotionValue(Infinity);
   const [view, setView] = useState(false);
-  const [guide, setGuide] = useState(false);
+  const guide = useGuide();
   const { language, setLanguage, t } = useI18n();
   const { dock } = useGold();
   const items: Item[] = dock.map((id) => {
@@ -113,10 +113,9 @@ function Dock({ vertical, className }: { vertical: boolean; className: string })
       style={{ touchAction: "none" }}>
       {items.map((it) => (
         <DockIcon key={it.id} item={it} pointer={pointer} vertical={vertical}
-          active={(it.kind === "link" && activeDock(path, dock) === it.id) || (it.kind === "view" && view) || (it.kind === "guide" && guide)} onView={() => setView((v) => !v)} onGuide={() => setGuide(true)} />
+          active={(it.kind === "link" && activeDock(path, dock) === it.id) || (it.kind === "view" && view) || (it.kind === "guide" && guide.isOpen)} onView={() => setView((v) => !v)} onGuide={() => guide.open()} />
       ))}
     </nav>
-    <GoldGuide open={guide} onOpenChange={setGuide} />
     </>
   );
 }

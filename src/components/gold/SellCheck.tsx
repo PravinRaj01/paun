@@ -1,6 +1,6 @@
 import { ADDS_UP_TOLERANCE, sellCheck, SUSUT_STARTING_POINT_PCT, type SellForm } from "@/lib/gold";
 import { useI18n } from "@/lib/i18n";
-import { NumField, Row, Verdict } from "./check-ui";
+import { GuideLink, NumField, Row, Verdict } from "./check-ui";
 import { useCheck } from "./use-check";
 
 /** Selling or trading in: what the shop's own rate says it should pay, against what it offered. */
@@ -89,6 +89,7 @@ export function SellCheck() {
           </div>
         </>
       )}
+      <div><GuideLink topic="susut" label={t("guideLinkSusut")} /></div>
     </section>
   );
 }
