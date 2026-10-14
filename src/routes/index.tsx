@@ -10,7 +10,7 @@ import { formatAgo, formatCalendarDate, formatMoment } from "@/lib/datetime";
 import { useSnapshot } from "@/lib/forecast/snapshot";
 import { useI18n } from "@/lib/i18n";
 import { chooseLandingSpot, feedStatus, useSpotFeed } from "@/lib/spot-feed";
-import { GoldGuide } from "@/components/gold/GoldGuide";
+import { useGuide } from "@/components/gold/guide/guide-context";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -43,7 +43,7 @@ function Landing() {
   const snap = useSnapshot();
   const { feed, now } = useSpotFeed();
   const [install, setInstall] = useState<BIPEvent | null>(null);
-  const [guide, setGuide] = useState(false);
+  const guide = useGuide();
   useEffect(() => {
     const h = (e: Event) => {
       e.preventDefault();
@@ -108,7 +108,7 @@ function Landing() {
           <div className="flex rounded-full border p-0.5 text-[10px]">
             {(["en", "ms"] as const).map((code) => <button key={code} onClick={() => setLanguage(code)} className={`rounded-full px-2 py-1 ${language === code ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{code === "en" ? "EN" : "BM"}</button>)}
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setGuide(true)} aria-label={t("guide")}><BookOpen className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" onClick={() => guide.open()} aria-label={t("guide")}><BookOpen className="h-4 w-4" /></Button>
           {install && (
             <Button variant="ghost" size="sm" onClick={() => install.prompt().then(() => setInstall(null))}>
               <Download className="h-4 w-4" /> <span className="hidden sm:inline">{t("install")}</span>
@@ -188,7 +188,6 @@ function Landing() {
       <footer className="border-t py-8 text-center text-xs text-muted-foreground">
         {t("homeFooter")}
       </footer>
-      <GoldGuide open={guide} onOpenChange={setGuide} />
     </div>
   );
 }
