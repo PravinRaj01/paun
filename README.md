@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/screenshot-wide.png" alt="Paun's Check price screen: the shop's rate and upah, with the top bar showing today's gold price" width="720" />
+  <img src="docs/images/paun-banner.jpg" alt="Illustration of Paun: the landing page on a phone, the price check form and the compare countries table" width="720" />
 </p>
 
 <h1 align="center">Paun</h1>
