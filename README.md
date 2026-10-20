@@ -103,7 +103,7 @@ flowchart LR
 | Forecast (`src/lib/forecast/`) | The browser | TypeScript port of the Python features and volatility bands, parity-tested against the snapshot file |
 
 The forecast shows a likely price range, not a direction: the regime (bearish / sideways / bullish) model did not pass its own
-ship rules, so its probabilities are hidden (`ml/README.md`).
+ship rules, so its probabilities are hidden (`ml/README.md`, `ml/MODELS.md`).
 
 ### One engine for the maths
 

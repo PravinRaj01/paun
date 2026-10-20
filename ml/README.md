@@ -7,6 +7,8 @@ walkthrough (1 Setup → 2 Data Collection → 3 Data Preparation → 4 Data Cle
 11 Conclusion; numbered `#` phases, short `##` steps, lettered `###` sub-items) that calls the same code the CLI and the
 daily GitHub Action use.
 
+**New to the models?** Read [`MODELS.md`](MODELS.md) first: data, preparation, features, labels, training, evaluation, the ship verdict and the limits. Both models are trained from scratch; none is pretrained or fine-tuned.
+
 ## What is here
 
 | Piece | File | Output |
