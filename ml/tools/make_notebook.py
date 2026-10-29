@@ -29,6 +29,20 @@ card — and explains them. Sections, in order:
 *Why not predict the exact price?* Gold behaves close to a random walk driven by surprises, so exact-price models
 only look good in hindsight. Probabilities and ranges are the honest products.
 
+## Approach in one minute
+
+| Question | Answer |
+|---|---|
+| Pretrained or fine-tuned model? | **No.** Model A (CatBoost) is trained **from scratch** on our own table of daily closes, 2010 to 2026. Model B uses volatility formulas (GARCH / EWMA) whose few parameters are fitted to the same data. There is no neural network. |
+| Data | Eight public daily series (gold futures, dollar index, US yields, gold volatility index, oil, USD/MYR, S&P 500) from Yahoo Finance and FRED. No API key. |
+| Preparation | Align everything on gold's trading days, forward-fill at most 5 sessions, never back-fill, shift the FRED series one session, drop the first 200 rows. Sections 2 to 4. |
+| Inputs | Returns, ratios and changes only, never raw prices. 24 candidates, 20 kept. Section 5. |
+| Target | Over the next 5 sessions, did gold fall or rise by more than 0.75 x the move expected for current volatility? Section 6. |
+| Honest testing | Walk-forward folds, never shuffled, a purge gap, a climatology baseline, one untouched test year, and a rule (A4) that stops a lucky model from shipping. Sections 7 and 8. |
+| Outcome | Model B (price range) ships. Model A (regime percentages) **does not**: its edge over the baseline cannot be told apart from luck. Section 8. |
+
+The same story with tables, the experiment results and the limits is in [`ml/MODELS.md`](https://github.com/PravinRaj01/paun/blob/main/ml/MODELS.md).
+
 **How the code is organised:** looking at and cleaning data is written here in plain pandas, so you can see and edit every
 step. Features, labels, models and charts come from the `paun_ml` package, the *same code* the daily GitHub Action and
 the tests use — so what you read here is exactly what ships.
